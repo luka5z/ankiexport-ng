@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyglot Builder</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, button { padding: 10px; margin-top: 10px; width: 100%; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .result-box { margin-top: 20px; background: #f9f9f9; padding: 10px; border-radius: 4px; display: none; }
+        .label { font-weight: bold; color: #555; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+<div id="login-view">
+    <h2>🔐 Login</h2>
+    <p>Enter your API Token to start.</p>
+    <input type="password" id="api-token" placeholder="Paste Token Here">
+    <button onclick="login()">Access App</button>
+</div>
+
+<div id="app-view" style="display:none;">
+    <h2>📚 Word Explorer</h2>
+    <div class="card">
+        <input type="text" id="word-input" placeholder="Type a word (e.g., Epiphany)">
+        <button onclick="fetchData()">Get Definition & Translation</button>
+        
+        <div id="results" class="result-box">
+            <p><span class="label">Definition:</span> <span id="def-result">...</span></p>
+            <hr>
+            <p><span class="label">Polish:</span> <span id="trans-result">...</span></p>
+        </div>
+    </div>
+    <p style="font-size: 0.8em; color: #666; margin-top: 20px;">
+        * Note: Words added to your Trello "Inbox" will be auto-updated tonight.
+    </p>
+    <button onclick="logout()" style="background:#dc3545; margin-top: 20px;">Logout</button>
+</div>
+
+<script>
+    const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
+    
+    function login() {
+        const token = document.getElementById('api-token').value;
+        if(token) {
+            localStorage.setItem('my_app_token', token);
+            toggleView();
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('my_app_token');
+        location.reload();
+    }
+
+    function toggleView() {
+        if(localStorage.getItem('my_app_token')) {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('app-view').style.display = 'block';
+        }
+    }
+
+    async function fetchData() {
+        const word = document.getElementById('word-input').value;
+        const token = localStorage.getItem('my_app_token');
+        const resBox = document.getElementById('results');
+        
+        resBox.style.display = 'block';
+        document.getElementById('def-result').innerText = "Loading...";
+        document.getElementById('trans-result').innerText = "Loading...";
+
+        try {
+            // Call Dictionary Lambda
+            const defReq = fetch(`${API_BASE}/dictionary`, {
+                method: 'POST',
+                headers: { 'x-api-token': token },
+                body: JSON.stringify({ word: word })
+            });
+
+            // Call Translate Lambda
+            const transReq = fetch(`${API_BASE}/translate`, {
+                method: 'POST',
+                headers: { 'x-api-token': token },
+                body: JSON.stringify({ word: word })
+            });
+
+            // Wait for both in parallel
+            const [defRes, transRes] = await Promise.all([defReq, transReq]);
+
+            if(defRes.status === 403 || transRes.status === 403) {
+                alert("Invalid Token"); logout(); return;
+            }
+
+            const defData = await defRes.json();
+            const transData = await transRes.json();
+
+            document.getElementById('def-result').innerText = defData.definition || "Not found";
+            document.getElementById('trans-result').innerText = transData.translation || "Not found";
+
+        } catch (e) {
+            alert("Error fetching data: " + e);
+        }
+    }
+
+    // Check login on load
+    toggleView();
+</script>
+
+</body>
+</html>
