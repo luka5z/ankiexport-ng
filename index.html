@@ -221,11 +221,17 @@
             border-radius: var(--radius);
             display: none;
         }
-        #settings-panel input {
+        #settings-panel input[type="number"] {
             flex: initial; /* Override global flex:1 */
             width: 70px;
             padding: 8px;
             margin-left: 10px;
+        }
+        #settings-panel input[type="checkbox"] {
+            flex: initial;
+            width: auto;
+            margin-left: 10px;
+            cursor: pointer;
         }
 
         /* Hide Views Logic */
@@ -310,9 +316,22 @@
             </button>
         </div>
         <div id="settings-panel">
+            <!-- Max Meanings (Groups) Setting -->
             <div style="display:flex; align-items:center; justify-content: space-between;">
-                <label for="max-meanings" style="color: var(--text-main); font-size: 0.9rem;">Max Part-of-Speech Elements:</label>
+                <label for="max-meanings" style="color: var(--text-main); font-size: 0.9rem;">Max Part-of-Speech Groups:</label>
                 <input type="number" id="max-meanings" value="3" min="1" max="10" onchange="updateSettings()">
+            </div>
+
+            <!-- Max Definitions per Group Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
+                <label for="max-defs" style="color: var(--text-main); font-size: 0.9rem;">Max Definitions per Group:</label>
+                <input type="number" id="max-defs" value="3" min="1" max="20" onchange="updateSettings()">
+            </div>
+            
+            <!-- Auto Translate Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
+                <label for="auto-translate" style="color: var(--text-main); font-size: 0.9rem;">Auto-Translate Headword:</label>
+                <input type="checkbox" id="auto-translate" checked onchange="updateSettings()">
             </div>
         </div>
     </div>
@@ -323,10 +342,14 @@
     const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
     const TOKEN_KEY = "polyglot_api_token";
     const SETTINGS_KEY = "polyglot_max_meanings";
+    const SETTINGS_KEY_DEFS = "polyglot_max_defs";
+    const AUTO_TRANS_KEY = "polyglot_auto_translate";
 
     let isEditing = false;
     let currentEntry = null; // Store data to allow re-rendering when settings change
     let maxMeanings = 3;
+    let maxDefs = 3;
+    let autoTranslateEnabled = true;
 
     // --- AUTHENTICATION LOGIC ---
     function initAuth() {
@@ -370,11 +393,26 @@
 
     // --- SETTINGS LOGIC ---
     function initSettings() {
-        const saved = localStorage.getItem(SETTINGS_KEY);
-        if (saved) {
-            maxMeanings = parseInt(saved, 10);
+        // Load Max Meanings (Groups)
+        const savedMeanings = localStorage.getItem(SETTINGS_KEY);
+        if (savedMeanings) {
+            maxMeanings = parseInt(savedMeanings, 10);
         }
         document.getElementById('max-meanings').value = maxMeanings;
+
+        // Load Max Definitions
+        const savedDefs = localStorage.getItem(SETTINGS_KEY_DEFS);
+        if (savedDefs) {
+            maxDefs = parseInt(savedDefs, 10);
+        }
+        document.getElementById('max-defs').value = maxDefs;
+
+        // Load Auto Translate
+        const savedAuto = localStorage.getItem(AUTO_TRANS_KEY);
+        if (savedAuto !== null) {
+            autoTranslateEnabled = (savedAuto === 'true');
+        }
+        document.getElementById('auto-translate').checked = autoTranslateEnabled;
     }
 
     function toggleSettings() {
@@ -383,15 +421,36 @@
     }
 
     function updateSettings() {
-        const input = document.getElementById('max-meanings');
-        const val = parseInt(input.value, 10);
-        if (val > 0) {
-            maxMeanings = val;
+        // Update Max Meanings (Groups)
+        const inputMeanings = document.getElementById('max-meanings');
+        const valMeanings = parseInt(inputMeanings.value, 10);
+        if (valMeanings > 0) {
+            maxMeanings = valMeanings;
             localStorage.setItem(SETTINGS_KEY, maxMeanings);
-            // Re-render if we have data
-            if (currentEntry) {
-                renderResult(currentEntry);
-                updateStats();
+        }
+
+        // Update Max Definitions
+        const inputDefs = document.getElementById('max-defs');
+        const valDefs = parseInt(inputDefs.value, 10);
+        if (valDefs > 0) {
+            maxDefs = valDefs;
+            localStorage.setItem(SETTINGS_KEY_DEFS, maxDefs);
+        }
+
+        // Update Auto Translate
+        const inputAuto = document.getElementById('auto-translate');
+        autoTranslateEnabled = inputAuto.checked;
+        localStorage.setItem(AUTO_TRANS_KEY, autoTranslateEnabled);
+
+        // Re-render if we have data
+        if (currentEntry) {
+            renderResult(currentEntry);
+            updateStats();
+            if (autoTranslateEnabled) {
+                const transDiv = document.getElementById('translate-div');
+                if (transDiv && transDiv.style.display === 'none') {
+                    autoTranslate(currentEntry.word);
+                }
             }
         }
     }
@@ -498,6 +557,12 @@
             renderResult(entry);
             updateStats();
             
+            // Trigger automatic translation for the word IF ENABLED
+            if (autoTranslateEnabled) {
+                autoTranslate(entry.word);
+            }
+            
+            // Enable translate button for new search
             const transBtn = document.getElementById('trans-btn');
             if (transBtn) transBtn.disabled = false;
             
@@ -517,18 +582,58 @@
         }
     }
 
-    // --- TRANSLATE LOGIC ---
-    async function translateWord() {
-        const frontDiv = document.getElementById('anki-front');
-        const backDiv = document.getElementById('anki-back');
-        if (!frontDiv || !backDiv) return;
+    // --- AUTO TRANSLATE LOGIC ---
+    async function autoTranslate(word) {
+        const transDiv = document.getElementById('translate-div');
+        if (!transDiv) return;
+        
+        const token = localStorage.getItem(TOKEN_KEY);
 
-        if (backDiv.classList.contains('pl-translation')) {
+        try {
+            const response = await fetch(`${API_BASE}/translate`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
+                body: JSON.stringify({ word: word }) // Just translating the headword
+            });
+
+            if (!response.ok) {
+                // We can silently fail for auto-translate or log
+                console.warn("Auto-translation failed", response.status);
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (data.translation) {
+                transDiv.innerHTML = `<span class="pl-label">PL</span> ${data.translation}`;
+                transDiv.classList.add('pl-translation');
+                transDiv.style.display = 'block';
+                updateStats(); // Update char count
+            }
+
+        } catch (error) {
+            console.error("Auto-translation error:", error);
+        }
+    }
+
+    // --- MANUAL TRANSLATE LOGIC (CONTEXT) ---
+    async function translateWord() {
+        // Target specifically the definitions content, ignoring the auto-translate div
+        const defsContent = document.getElementById('definitions-content');
+        if (!defsContent) return;
+
+        if (defsContent.classList.contains('pl-translation')) {
             return;
         }
 
+        const frontDiv = document.getElementById('anki-front');
         const wordTitle = frontDiv.querySelector('.word-title')?.innerText || "";
-        const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${backDiv.innerHTML}`;
+        
+        // We still provide full context to translation including headword, but we only replace defsContent
+        const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${defsContent.innerHTML}`;
 
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
@@ -569,8 +674,9 @@
             const data = await response.json();
             
             if (data.translation) {
-                backDiv.innerHTML = data.translation;
-                backDiv.classList.add('pl-translation');
+                // Replace only definitions content
+                defsContent.innerHTML = data.translation;
+                defsContent.classList.add('pl-translation');
                 success = true;
                 updateStats();
             }
@@ -599,17 +705,25 @@
             </div>
             
             <div id="anki-back">
+                <!-- Auto Translation Container -->
+                <div id="translate-div" style="display:none; margin-bottom: 20px;"></div>
+                
+                <!-- Definitions Container -->
+                <div id="definitions-content">
         `;
 
-        // Apply Limit based on Settings
+        // Apply Limit based on Settings (Max Groups)
         const meaningsToShow = entry.meanings.slice(0, maxMeanings);
 
         meaningsToShow.forEach(meaning => {
+            // Apply Limit based on Settings (Max Definitions per Group)
+            const defsToShow = meaning.definitions.slice(0, maxDefs);
+
             html += `
                 <div class="meaning-group" style="margin-bottom: 1.5rem;">
                     <span class="part-of-speech">${meaning.partOfSpeech}</span>
                     <ul>
-                        ${meaning.definitions.map(def => `
+                        ${defsToShow.map(def => `
                             <li>
                                 ${def.definition}
                                 ${def.example ? `<br><span class="example">"${def.example}"</span>` : ''}
@@ -620,7 +734,7 @@
             `;
         });
 
-        html += `</div>`;
+        html += `</div></div>`; // Close definitions-content and anki-back
         container.innerHTML = html;
         
         // Add listeners for editing updates
