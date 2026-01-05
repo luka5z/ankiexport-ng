@@ -1,114 +1,500 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polyglot Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solarized Dictionary</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
-        .card { border: 1px solid #ddd; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input, button { padding: 10px; margin-top: 10px; width: 100%; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        .result-box { margin-top: 20px; background: #f9f9f9; padding: 10px; border-radius: 4px; display: none; }
-        .label { font-weight: bold; color: #555; font-size: 0.9em; }
+        /* --- SOLARIZED PALETTE & THEME VARIABLES --- */
+        :root {
+            /* Solarized Colors */
+            --sol-base03: #002b36;
+            --sol-base02: #073642;
+            --sol-base01: #586e75;
+            --sol-base00: #657b83;
+            --sol-base0:  #839496;
+            --sol-base1:  #93a1a1;
+            --sol-base2:  #eee8d5;
+            --sol-base3:  #fdf6e3;
+            --sol-yellow: #b58900;
+            --sol-orange: #cb4b16;
+            --sol-red:    #dc322f;
+            --sol-magenta:#d33682;
+            --sol-violet: #6c71c4;
+            --sol-blue:   #268bd2;
+            --sol-cyan:   #2aa198;
+            --sol-green:  #859900;
+
+            /* Default (Light) Theme Mappings */
+            --bg: var(--sol-base3);
+            --surface: var(--sol-base2);
+            --text-main: var(--sol-base00);
+            --text-muted: var(--sol-base01); 
+            --primary: var(--sol-blue);
+            --secondary: var(--sol-green);
+            --warning: var(--sol-yellow);
+            --border: var(--sol-base1);
+            --shadow: rgba(0, 0, 0, 0.05);
+            --input-bg: #ffffff;
+            
+            --radius: 8px;
+        }
+
+        /* Dark Theme Overrides */
+        [data-theme="dark"] {
+            --bg: var(--sol-base03);
+            --surface: var(--sol-base02);
+            --text-main: var(--sol-base0);
+            --text-muted: var(--sol-base1);
+            --primary: var(--sol-blue);
+            --border: var(--sol-base01);
+            --shadow: rgba(0, 0, 0, 0.3);
+            --input-bg: var(--sol-base03);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Centered vertically for login */
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            background: var(--surface);
+            width: 100%;
+            max-width: 600px;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px var(--shadow);
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Header & Toggle */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.75rem; }
+
+        .theme-toggle {
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.2rem; cursor: pointer; padding: 8px;
+            border-radius: 50%; transition: color 0.2s, background 0.2s;
+        }
+        .theme-toggle:hover { color: var(--primary); background-color: rgba(0,0,0,0.05); }
+
+        /* Search Section */
+        .search-box { display: flex; gap: 10px; margin-bottom: 1rem; }
+
+        input {
+            flex: 1; padding: 14px; font-size: 16px; 
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background-color: var(--input-bg); color: var(--text-main);
+            -webkit-appearance: none; transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        button.action-btn {
+            padding: 12px 20px; color: white; border: none;
+            border-radius: var(--radius); cursor: pointer; font-weight: 600;
+            font-size: 1rem; transition: opacity 0.2s;
+            touch-action: manipulation;
+        }
+        button.action-btn:hover { opacity: 0.9; }
+        button.action-btn:active { transform: scale(0.98); }
+
+        #search-btn { background-color: var(--primary); min-width: 60px;}
+
+        /* Login Button specific */
+        .btn-login { background-color: var(--primary); width: 100%; margin-top: 10px; }
+
+        /* Actions Bar */
+        .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; }
+        
+        .btn-edit { background-color: var(--warning); flex: 1; color: #fff; }
+        .btn-save { background-color: var(--secondary); flex: 1; color: #fff; }
+        .btn-export { background-color: var(--text-muted); flex: 2; color: #fff; }
+
+        /* Separator Select Styling */
+        .separator-select {
+            padding: 0 10px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            min-width: 80px;
+        }
+
+        /* Results Section */
+        #result-container {
+            padding: 0.5rem;
+            border: 2px solid transparent;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            overflow-wrap: break-word; 
+        }
+
+        .editing-mode {
+            background-color: rgba(181, 137, 0, 0.1); 
+            border-color: var(--warning) !important;
+            outline: none;
+            padding: 1rem;
+        }
+
+        .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
+        .error { text-align: center; color: var(--sol-red); margin-top: 20px; }
+
+        /* Definitions Styling */
+        .word-title { font-size: 1.8rem; font-weight: bold; margin: 0; }
+        .phonetic { color: var(--text-muted); font-family: monospace; font-size:1.1rem; }
+        .part-of-speech {
+            font-weight: bold; font-style: italic; color: var(--surface); 
+            background: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem;
+        }
+
+        ul { margin: 0; padding-left: 1.2rem; margin-top: 10px; }
+        li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
+        .example { color: var(--text-muted); font-size: 0.9em; font-style: italic; display: block; margin-top: 4px;}
+
+        /* Hide Views Logic */
+        .view-hidden { display: none !important; }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            body { padding: 0; align-items: flex-start; }
+            .container { box-shadow: none; border-radius: 0; padding: 1rem; max-width: 100%; min-height: 100vh;}
+            .action-bar { flex-direction: column; gap: 12px; }
+            button.action-btn, .separator-select { width: 100%; padding: 14px; }
+        }
     </style>
 </head>
 <body>
 
-<div id="login-view">
-    <h2>🔐 Login</h2>
-    <p>Enter your API Token to start.</p>
-    <input type="password" id="api-token" placeholder="Paste Token Here">
-    <button onclick="login()">Access App</button>
-</div>
-
-<div id="app-view" style="display:none;">
-    <h2>📚 Word Explorer</h2>
-    <div class="card">
-        <input type="text" id="word-input" placeholder="Type a word (e.g., Epiphany)">
-        <button onclick="fetchData()">Get Definition & Translation</button>
-        
-        <div id="results" class="result-box">
-            <p><span class="label">Definition:</span> <span id="def-result">...</span></p>
-            <hr>
-            <p><span class="label">Polish:</span> <span id="trans-result">...</span></p>
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="container">
+        <div class="header-row">
+            <h1><i class="fas fa-lock"></i> Login</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" id="login-theme-btn">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Please enter your API Token to access the dictionary.</p>
+        <input type="password" id="token-input" placeholder="Paste your Access Token..." onkeydown="if(event.key==='Enter') login()">
+        <button onclick="login()" class="action-btn btn-login">Unlock Dictionary</button>
     </div>
-    <p style="font-size: 0.8em; color: #666; margin-top: 20px;">
-        * Note: Words added to your Trello "Inbox" will be auto-updated tonight.
-    </p>
-    <button onclick="logout()" style="background:#dc3545; margin-top: 20px;">Logout</button>
-</div>
+
+    <!-- MAIN APP VIEW -->
+    <div id="app-view" class="container view-hidden">
+        <div class="header-row">
+            <h1><i class="fas fa-book-open"></i> Dictionary</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" id="app-theme-btn">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="word-input" placeholder="Enter a word..." autocomplete="off" onkeydown="if(event.key==='Enter') searchWord()">
+            <button onclick="searchWord()" id="search-btn" class="action-btn"><i class="fas fa-search"></i></button>
+        </div>
+
+        <div class="action-bar" id="action-bar">
+            <button id="edit-btn" class="action-btn btn-edit" onclick="toggleEditMode()">
+                <i class="fas fa-pen"></i> Edit
+            </button>
+            
+            <select id="separator-select" class="separator-select" aria-label="CSV Separator">
+                <option value=";" selected>Sep: ;</option>
+                <option value=",">Sep: ,</option>
+                <option value="    ">Sep: Tab</option>
+                <option value="|">Sep: |</option>
+            </select>
+
+            <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
+                <i class="fas fa-download"></i> CSV
+            </button>
+
+            <!-- Logout Button added to action bar -->
+             <button onclick="logout()" class="action-btn" style="background-color: var(--sol-red); flex: 0.5; color: #fff;" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+
+        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Finding definition...</div>
+        <div id="result-container"></div>
+    </div>
 
 <script>
-    const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
-    
+    // --- CONFIGURATION ---
+    // REPLACE THIS with your Terraform Output URL
+    const API_BASE = "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com"; 
+    const TOKEN_KEY = "polyglot_api_token";
+
+    let isEditing = false;
+
+    // --- AUTHENTICATION LOGIC ---
+    function initAuth() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+            showApp();
+        } else {
+            showLogin();
+        }
+    }
+
     function login() {
-        const token = document.getElementById('api-token').value;
-        if(token) {
-            localStorage.setItem('my_app_token', token);
-            toggleView();
+        const input = document.getElementById('token-input');
+        const token = input.value.trim();
+        if (token) {
+            localStorage.setItem(TOKEN_KEY, token);
+            showApp();
         }
     }
 
     function logout() {
-        localStorage.removeItem('my_app_token');
-        location.reload();
+        localStorage.removeItem(TOKEN_KEY);
+        // Clear inputs and results
+        document.getElementById('word-input').value = '';
+        document.getElementById('result-container').innerHTML = '';
+        document.getElementById('action-bar').style.display = 'none';
+        showLogin();
     }
 
-    function toggleView() {
-        if(localStorage.getItem('my_app_token')) {
-            document.getElementById('login-view').style.display = 'none';
-            document.getElementById('app-view').style.display = 'block';
-        }
+    function showApp() {
+        document.getElementById('login-view').classList.add('view-hidden');
+        document.getElementById('app-view').classList.remove('view-hidden');
     }
 
-    async function fetchData() {
-        const word = document.getElementById('word-input').value;
-        const token = localStorage.getItem('my_app_token');
-        const resBox = document.getElementById('results');
+    function showLogin() {
+        document.getElementById('app-view').classList.add('view-hidden');
+        document.getElementById('login-view').classList.remove('view-hidden');
+    }
+
+    // --- THEME MANAGEMENT ---
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
-        resBox.style.display = 'block';
-        document.getElementById('def-result').innerText = "Loading...";
-        document.getElementById('trans-result').innerText = "Loading...";
+        // Apply to both buttons (login and app)
+        const buttons = [document.getElementById('login-theme-btn'), document.getElementById('app-theme-btn')];
+
+        const isDark = (savedTheme === 'dark' || (!savedTheme && systemPrefersDark));
+        const newTheme = isDark ? 'dark' : 'light';
+        const icon = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+
+        document.documentElement.setAttribute('data-theme', newTheme);
+        buttons.forEach(btn => { if(btn) btn.innerHTML = icon; });
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        
+        const icon = newTheme === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+        const buttons = [document.getElementById('login-theme-btn'), document.getElementById('app-theme-btn')];
+        buttons.forEach(btn => { if(btn) btn.innerHTML = icon; });
+    }
+
+    // --- SEARCH LOGIC (UPDATED FOR AWS LAMBDA) ---
+    async function searchWord() {
+        const input = document.getElementById('word-input');
+        const resultContainer = document.getElementById('result-container');
+        const loader = document.getElementById('loader');
+        const actionBar = document.getElementById('action-bar');
+        const word = input.value.trim();
+        const token = localStorage.getItem(TOKEN_KEY);
+
+        if (!word) return;
+
+        input.blur(); 
+        resultContainer.innerHTML = '';
+        actionBar.style.display = 'none';
+        loader.style.display = 'block';
+        resetEditMode(); 
 
         try {
-            // Call Dictionary Lambda
-            const defReq = fetch(`${API_BASE}/dictionary`, {
+            // CALL AWS LAMBDA INSTEAD OF EXTERNAL API
+            const response = await fetch(`${API_BASE}/dictionary`, {
                 method: 'POST',
-                headers: { 'x-api-token': token },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
                 body: JSON.stringify({ word: word })
             });
 
-            // Call Translate Lambda
-            const transReq = fetch(`${API_BASE}/translate`, {
-                method: 'POST',
-                headers: { 'x-api-token': token },
-                body: JSON.stringify({ word: word })
-            });
-
-            // Wait for both in parallel
-            const [defRes, transRes] = await Promise.all([defReq, transReq]);
-
-            if(defRes.status === 403 || transRes.status === 403) {
-                alert("Invalid Token"); logout(); return;
+            if (response.status === 403) {
+                alert("Session expired or invalid token.");
+                logout();
+                return;
             }
 
-            const defData = await defRes.json();
-            const transData = await transRes.json();
+            if (!response.ok) throw new Error("Word not found");
+            
+            // The Lambda now returns the SINGLE object (data[0] from external api)
+            const entry = await response.json();
+            renderResult(entry);
+            actionBar.style.display = 'flex';
 
-            document.getElementById('def-result').innerText = defData.definition || "Not found";
-            document.getElementById('trans-result').innerText = transData.translation || "Not found";
-
-        } catch (e) {
-            alert("Error fetching data: " + e);
+        } catch (error) {
+            resultContainer.innerHTML = `<div class="error">
+                <i class="fas fa-exclamation-circle fa-2x"></i><br><br>
+                Could not find definition for <b>"${word}"</b>.
+            </div>`;
+        } finally {
+            loader.style.display = 'none';
         }
     }
 
-    // Check login on load
-    toggleView();
+    function renderResult(entry) {
+        const container = document.getElementById('result-container');
+        const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
+
+        let html = `
+            <div id="anki-front">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="word-title">${entry.word}</span> 
+                    <span class="phonetic">${phoneticText}</span>
+                </div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #93a1a1;">
+            </div>
+            
+            <div id="anki-back">
+        `;
+
+        entry.meanings.forEach(meaning => {
+            html += `
+                <div class="meaning-group" style="margin-bottom: 1.5rem;">
+                    <span class="part-of-speech">${meaning.partOfSpeech}</span>
+                    <ul>
+                        ${meaning.definitions.map(def => `
+                            <li>
+                                ${def.definition}
+                                ${def.example ? `<br><span class="example">"${def.example}"</span>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div><br>
+            `;
+        });
+
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+
+    // --- EDITING & EXPORT LOGIC (Kept same) ---
+    function toggleEditMode() {
+        const container = document.getElementById('result-container');
+        const btn = document.getElementById('edit-btn');
+        isEditing = !isEditing;
+
+        if (isEditing) {
+            container.contentEditable = "true";
+            container.classList.add('editing-mode');
+            container.focus();
+            btn.innerHTML = '<i class="fas fa-save"></i> Save';
+            btn.className = 'btn-save action-btn';
+        } else {
+            container.contentEditable = "false";
+            container.classList.remove('editing-mode');
+            btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+            btn.className = 'btn-edit action-btn';
+        }
+    }
+
+    function resetEditMode() {
+        isEditing = false;
+        const container = document.getElementById('result-container');
+        const btn = document.getElementById('edit-btn');
+        if(container) {
+            container.contentEditable = "false";
+            container.classList.remove('editing-mode');
+        }
+        if(btn) {
+            btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+            btn.className = 'btn-edit action-btn';
+        }
+    }
+
+    function exportToAnki() {
+        const frontDiv = document.getElementById('anki-front');
+        const backDiv = document.getElementById('anki-back');
+        const sepSelect = document.getElementById('separator-select');
+
+        if (!frontDiv || !backDiv) {
+            alert("No content to export!");
+            return;
+        }
+
+        const separator = sepSelect.value;
+        const frontHtml = frontDiv.innerHTML.replace(/\n/g, '').trim();
+        const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
+        const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
+        
+        const wordText = frontDiv.querySelector('.word-title')?.innerText || 'export';
+        downloadFile(csvContent, `${wordText}_anki.csv`);
+    }
+
+    function escapeCsv(text) {
+        if (!text) return "";
+        return text.replace(/"/g, '""');
+    }
+
+    function downloadFile(content, fileName) {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- INITIALIZATION ---
+    initTheme();
+    initAuth();
+
+    // Handle URL params
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const wordParam = urlParams.get('w');
+        if (wordParam && localStorage.getItem(TOKEN_KEY)) {
+            const input = document.getElementById('word-input');
+            input.value = wordParam;
+            searchWord();
+        }
+    });
+
 </script>
 
 </body>
 </html>
+```
+
+### Next Steps
+
+1.  **Deploy Changes:** Since you changed the python code, you must update the cloud infrastructure.
+    ```bash
+    terraform apply
