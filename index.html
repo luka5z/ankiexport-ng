@@ -142,7 +142,7 @@
             cursor: pointer;
             outline: none;
             min-width: 80px;
-            flex: 1;
+            /* removed flex:1 to fit better in settings */
         }
 
         /* Results Section */
@@ -229,7 +229,7 @@
         .settings-toggle-btn {
             background: none; border: 1px solid var(--border); color: var(--text-muted);
             border-radius: var(--radius); padding: 6px 12px; cursor: pointer;
-            font-size: 0.85rem; transition: all 0.2s; margin-top: 15px;
+            font-size: 0.85rem; transition: all 0.2s;
         }
         .settings-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
         
@@ -306,7 +306,7 @@
             body { padding: 0; align-items: flex-start; }
             .container { box-shadow: none; border-radius: 0; padding: 1rem; max-width: 100%; min-height: 100vh;}
             .action-bar { flex-direction: column; gap: 12px; }
-            button.action-btn, .separator-select { width: 100%; padding: 14px; }
+            button.action-btn { width: 100%; padding: 14px; }
         }
     </style>
 </head>
@@ -352,19 +352,8 @@
                 <i class="fas fa-pen"></i> Edit
             </button>
             
-            <select id="separator-select" class="separator-select" aria-label="CSV Separator">
-                <option value=";" selected>Sep: ;</option>
-                <option value=",">Sep: ,</option>
-                <option value="    ">Sep: Tab</option>
-                <option value="|">Sep: |</option>
-            </select>
-
             <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
                 <i class="fas fa-download"></i> CSV
-            </button>
-
-             <button onclick="logout()" class="action-btn" style="background-color: var(--sol-red); flex: 0.5; color: #fff;" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
 
@@ -373,15 +362,30 @@
         <!-- Stats Bar -->
         <div id="stats-bar" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-height: 1.2em;"></div>
 
-        <!-- Settings Section at Bottom -->
-        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 20px;">
+        <!-- Footer Section: Logout & Settings -->
+        <div style="display:flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 20px;">
+            <button onclick="logout()" class="settings-toggle-btn" style="color: var(--sol-red); border-color: var(--sol-red);">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
             <button class="settings-toggle-btn" onclick="toggleSettings()">
                 <i class="fas fa-cog"></i> Settings
             </button>
         </div>
+
         <div id="settings-panel">
-            <!-- Max Meanings (Groups) Setting -->
+            <!-- Separator Setting -->
             <div style="display:flex; align-items:center; justify-content: space-between;">
+                <label for="separator-select" style="color: var(--text-main); font-size: 0.9rem;">CSV Separator:</label>
+                <select id="separator-select" class="separator-select" aria-label="CSV Separator" style="padding: 5px;">
+                    <option value=";" selected>Semicolon (;)</option>
+                    <option value=",">Comma (,)</option>
+                    <option value="    ">Tab</option>
+                    <option value="|">Pipe (|)</option>
+                </select>
+            </div>
+
+            <!-- Max Meanings (Groups) Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
                 <label for="max-meanings" style="color: var(--text-main); font-size: 0.9rem;">Max Part-of-Speech Groups:</label>
                 <input type="number" id="max-meanings" value="3" min="1" max="10" onchange="updateSettings()">
             </div>
@@ -878,7 +882,7 @@
         }
 
         const separator = sepSelect.value;
-        const frontHtml = frontDiv.innerHTML.replace(/\n/g, '').trim();
+        const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
         const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
