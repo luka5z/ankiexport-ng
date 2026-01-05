@@ -381,18 +381,17 @@
 
     // --- TRANSLATE LOGIC ---
     async function translateWord() {
-        const frontDiv = document.getElementById('anki-front');
         const backDiv = document.getElementById('anki-back');
-        if (!frontDiv || !backDiv) return; // Only translate if we have a word loaded
+        if (!backDiv) return; // Only translate if we have a word loaded
 
-        // Extract text from both sides to provide full context for translation
-        const textToTranslate = frontDiv.innerText + "\n\n" + backDiv.innerText;
+        // Send innerHTML to preserve formatting (lists, spans)
+        const contentToTranslate = backDiv.innerHTML;
 
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
 
-        loader.innerText = "Translating full card...";
+        loader.innerText = "Translating formatting...";
         loader.style.display = 'block';
         transBtn.disabled = true;
 
@@ -403,7 +402,7 @@
                     'Content-Type': 'application/json',
                     'x-api-token': token 
                 },
-                body: JSON.stringify({ word: textToTranslate })
+                body: JSON.stringify({ word: contentToTranslate })
             });
 
             if (response.status === 403) {
@@ -414,14 +413,11 @@
             const data = await response.json();
             
             if (data.translation) {
-                // Replace content of backDiv with the full translation
-                // Convert newlines to <br> to preserve some structure
-                backDiv.innerHTML = data.translation.replace(/\n/g, '<br>');
+                // Replace content of backDiv with the translated HTML
+                backDiv.innerHTML = data.translation;
                 
-                // Add the PL style to the whole block so it looks consistent
+                // Add the PL style
                 backDiv.classList.add('pl-translation');
-                // Remove the left-border/background override from the class if needed, 
-                // but pl-translation class logic (bg color + border) actually works nicely for the whole block.
             }
 
         } catch (error) {
