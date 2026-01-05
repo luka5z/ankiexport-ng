@@ -123,8 +123,9 @@
         .btn-login { background-color: var(--primary); width: 100%; margin-top: 10px; }
 
         /* Actions Bar */
-        .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; }
+        .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; flex-wrap: wrap;}
         
+        .btn-trans { background-color: var(--sol-violet); flex: 1; color: #fff; }
         .btn-edit { background-color: var(--warning); flex: 1; color: #fff; }
         .btn-save { background-color: var(--secondary); flex: 1; color: #fff; }
         .btn-export { background-color: var(--text-muted); flex: 2; color: #fff; }
@@ -140,6 +141,7 @@
             cursor: pointer;
             outline: none;
             min-width: 80px;
+            flex: 1;
         }
 
         /* Results Section */
@@ -168,6 +170,17 @@
             font-weight: bold; font-style: italic; color: var(--surface); 
             background: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem;
         }
+
+        /* Translation Styling */
+        .pl-translation {
+            background-color: rgba(108, 113, 196, 0.1); /* Violet tint */
+            border-left: 4px solid var(--sol-violet);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+        }
+        .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
 
         ul { margin: 0; padding-left: 1.2rem; margin-top: 10px; }
         li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
@@ -203,7 +216,7 @@
     <!-- MAIN APP VIEW -->
     <div id="app-view" class="container view-hidden">
         <div class="header-row">
-            <h1><i class="fas fa-book-open"></i> Dictionary</h1>
+            <h1><i class="fas fa-book-open"></i> Polyglot</h1>
             <button class="theme-toggle" onclick="toggleTheme()" id="app-theme-btn">
                 <i class="fas fa-moon"></i>
             </button>
@@ -215,6 +228,11 @@
         </div>
 
         <div class="action-bar" id="action-bar">
+            <!-- New Translate Button -->
+            <button id="trans-btn" class="action-btn btn-trans" onclick="translateWord()">
+                <i class="fas fa-language"></i> PL
+            </button>
+
             <button id="edit-btn" class="action-btn btn-edit" onclick="toggleEditMode()">
                 <i class="fas fa-pen"></i> Edit
             </button>
@@ -230,13 +248,12 @@
                 <i class="fas fa-download"></i> CSV
             </button>
 
-            <!-- Logout Button added to action bar -->
              <button onclick="logout()" class="action-btn" style="background-color: var(--sol-red); flex: 0.5; color: #fff;" title="Logout">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
         </div>
 
-        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Finding definition...</div>
+        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Processing...</div>
         <div id="result-container"></div>
     </div>
 
@@ -269,7 +286,6 @@
 
     function logout() {
         localStorage.removeItem(TOKEN_KEY);
-        // Clear inputs and results
         document.getElementById('word-input').value = '';
         document.getElementById('result-container').innerHTML = '';
         document.getElementById('action-bar').style.display = 'none';
@@ -291,9 +307,7 @@
         const savedTheme = localStorage.getItem('theme');
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         
-        // Apply to both buttons (login and app)
         const buttons = [document.getElementById('login-theme-btn'), document.getElementById('app-theme-btn')];
-
         const isDark = (savedTheme === 'dark' || (!savedTheme && systemPrefersDark));
         const newTheme = isDark ? 'dark' : 'light';
         const icon = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
@@ -315,7 +329,7 @@
         buttons.forEach(btn => { if(btn) btn.innerHTML = icon; });
     }
 
-    // --- SEARCH LOGIC (UPDATED FOR AWS LAMBDA) ---
+    // --- SEARCH LOGIC ---
     async function searchWord() {
         const input = document.getElementById('word-input');
         const resultContainer = document.getElementById('result-container');
@@ -329,11 +343,11 @@
         input.blur(); 
         resultContainer.innerHTML = '';
         actionBar.style.display = 'none';
+        loader.innerText = "Finding definition...";
         loader.style.display = 'block';
         resetEditMode(); 
 
         try {
-            // CALL AWS LAMBDA INSTEAD OF EXTERNAL API
             const response = await fetch(`${API_BASE}/dictionary`, {
                 method: 'POST',
                 headers: { 
@@ -351,7 +365,6 @@
 
             if (!response.ok) throw new Error("Word not found");
             
-            // The Lambda now returns the SINGLE object (data[0] from external api)
             const entry = await response.json();
             renderResult(entry);
             actionBar.style.display = 'flex';
@@ -363,6 +376,59 @@
             </div>`;
         } finally {
             loader.style.display = 'none';
+        }
+    }
+
+    // --- TRANSLATE LOGIC ---
+    async function translateWord() {
+        const frontDiv = document.getElementById('anki-front');
+        const backDiv = document.getElementById('anki-back');
+        if (!frontDiv) return; // Only translate if we have a word loaded
+
+        // Check if already translated to avoid duplicates
+        if (backDiv.querySelector('.pl-translation')) return;
+
+        const word = frontDiv.querySelector('.word-title')?.innerText;
+        const token = localStorage.getItem(TOKEN_KEY);
+        const loader = document.getElementById('loader');
+        const transBtn = document.getElementById('trans-btn');
+
+        loader.innerText = "Translating...";
+        loader.style.display = 'block';
+        transBtn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_BASE}/translate`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
+                body: JSON.stringify({ word: word })
+            });
+
+            if (response.status === 403) {
+                alert("Session expired.");
+                logout(); return;
+            }
+
+            const data = await response.json();
+            
+            if (data.translation) {
+                // Insert Translation at the TOP of the Back card (Meaning side)
+                const transHtml = `
+                    <div class="pl-translation">
+                        <span class="pl-label">PL</span> ${data.translation}
+                    </div>
+                `;
+                backDiv.insertAdjacentHTML('afterbegin', transHtml);
+            }
+
+        } catch (error) {
+            alert("Translation failed: " + error.message);
+        } finally {
+            loader.style.display = 'none';
+            transBtn.disabled = false;
         }
     }
 
@@ -402,7 +468,7 @@
         container.innerHTML = html;
     }
 
-    // --- EDITING & EXPORT LOGIC (Kept same) ---
+    // --- EDITING & EXPORT LOGIC ---
     function toggleEditMode() {
         const container = document.getElementById('result-container');
         const btn = document.getElementById('edit-btn');
@@ -476,7 +542,6 @@
     initTheme();
     initAuth();
 
-    // Handle URL params
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const wordParam = urlParams.get('w');
