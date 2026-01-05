@@ -116,6 +116,7 @@
         }
         button.action-btn:hover { opacity: 0.9; }
         button.action-btn:active { transform: scale(0.98); }
+        button.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         #search-btn { background-color: var(--primary); min-width: 60px;}
 
@@ -367,6 +368,11 @@
             
             const entry = await response.json();
             renderResult(entry);
+            
+            // Enable translate button for new search
+            const transBtn = document.getElementById('trans-btn');
+            if (transBtn) transBtn.disabled = false;
+            
             actionBar.style.display = 'flex';
 
         } catch (error) {
@@ -386,7 +392,6 @@
 
         // Check if already translated to avoid duplicates
         if (backDiv.classList.contains('pl-translation')) {
-            alert("This content has already been translated.");
             return;
         }
 
@@ -396,6 +401,7 @@
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
+        let success = false;
 
         loader.innerText = "Translating formatting...";
         loader.style.display = 'block';
@@ -424,13 +430,17 @@
                 
                 // Add the PL style
                 backDiv.classList.add('pl-translation');
+                success = true;
             }
 
         } catch (error) {
             alert("Translation failed: " + error.message);
         } finally {
             loader.style.display = 'none';
-            transBtn.disabled = false;
+            // Only re-enable if failed, otherwise keep disabled to prevent duplicates
+            if (!success) {
+                transBtn.disabled = false;
+            }
         }
     }
 
