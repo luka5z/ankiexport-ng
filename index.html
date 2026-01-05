@@ -387,16 +387,21 @@
 
     // --- TRANSLATE LOGIC ---
     async function translateWord() {
+        const frontDiv = document.getElementById('anki-front');
         const backDiv = document.getElementById('anki-back');
-        if (!backDiv) return; // Only translate if we have a word loaded
+        if (!frontDiv || !backDiv) return;
 
         // Check if already translated to avoid duplicates
         if (backDiv.classList.contains('pl-translation')) {
             return;
         }
 
-        // Send innerHTML to preserve formatting (lists, spans)
-        const contentToTranslate = backDiv.innerHTML;
+        // 1. Get Word Title (No Phonetics)
+        const wordTitle = frontDiv.querySelector('.word-title')?.innerText || "";
+
+        // 2. Prepare HTML for translation
+        // We wrap the title in the same class to preserve the "Look & Feel" (Big Font) in the translation
+        const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${backDiv.innerHTML}`;
 
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
