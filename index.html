@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polyglot</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#268bd2">
     <style>
         /* --- SOLARIZED PALETTE & THEME VARIABLES --- */
         :root {
@@ -537,7 +535,8 @@
         }
 
         const separator = sepSelect.value;
-        const frontHtml = frontDiv.innerHTML.replace(/\n/g, '').trim();
+        // Remove <hr> tags specifically from front card before export to keep Anki cards clean
+        const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
         const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
