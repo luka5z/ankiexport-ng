@@ -154,13 +154,44 @@
             overflow-wrap: break-word; 
         }
         
-        /* Font for Anki Cards */
-        #anki-front, #anki-back {
+        /* Font for Anki Cards Content */
+        #anki-front, #translate-div, #definitions-content {
             font-family: "Souvenir Std", Georgia, serif;
         }
 
+        /* --- Distinct Background Styles --- */
+        
+        /* 1. FRONT (Blue) */
+        #anki-front {
+            background-color: rgba(38, 139, 210, 0.08); /* Blue tint */
+            border-left: 4px solid var(--sol-blue);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        /* 2. TRANSLATION (Violet) */
+        .pl-translation {
+            background-color: rgba(108, 113, 196, 0.1); /* Violet tint */
+            border-left: 4px solid var(--sol-violet);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+        }
+        .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+
+        /* 3. DEFINITIONS (Green) */
+        #definitions-content {
+            background-color: rgba(133, 153, 0, 0.08); /* Green tint */
+            border-left: 4px solid var(--sol-green);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
         .editing-mode {
-            background-color: rgba(181, 137, 0, 0.1); 
+            background-color: rgba(181, 137, 0, 0.1) !important; 
             border-color: var(--warning) !important;
             outline: none;
             padding: 1rem;
@@ -189,17 +220,6 @@
             font-weight: bold; font-style: italic; color: var(--surface); 
             background: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem;
         }
-
-        /* Translation Styling */
-        .pl-translation {
-            background-color: rgba(108, 113, 196, 0.1); /* Violet tint */
-            border-left: 4px solid var(--sol-violet);
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            font-size: 1.1rem;
-        }
-        .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
 
         ul { margin: 0; padding-left: 1.2rem; margin-top: 10px; }
         li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
@@ -656,7 +676,8 @@
             
             if (data.translation) {
                 transDiv.innerHTML = `<span class="pl-label">PL</span> ${data.translation}`;
-                transDiv.classList.add('pl-translation');
+                // Apply styling class (Violet background)
+                transDiv.className = 'pl-translation'; 
                 transDiv.style.display = 'block';
                 updateStats(); // Update char count
             }
@@ -723,7 +744,14 @@
             if (data.translation) {
                 // Replace only definitions content
                 defsContent.innerHTML = data.translation;
-                defsContent.classList.add('pl-translation');
+                // Add class for styling (Violet)
+                defsContent.classList.add('pl-translation'); 
+                // Important: Override border/bg to match violet theme if we want context translation to look like translation
+                // OR we can keep it as definitions style but translated. 
+                // Given the visual cues, let's switch it to violet to indicate it's translated.
+                defsContent.style.backgroundColor = "rgba(108, 113, 196, 0.1)";
+                defsContent.style.borderLeftColor = "var(--sol-violet)";
+                
                 success = true;
                 updateStats();
             }
@@ -748,12 +776,12 @@
                     <span class="word-title">${entry.word}</span> 
                     <span class="phonetic">${phoneticText}</span>
                 </div>
-                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #93a1a1;">
+                <!-- HR removed for cleaner UI with colored blocks -->
             </div>
             
             <div id="anki-back">
                 <!-- Auto Translation Container -->
-                <div id="translate-div" style="display:none; margin-bottom: 20px;"></div>
+                <div id="translate-div" style="display:none;"></div>
                 
                 <!-- Definitions Container -->
                 <div id="definitions-content">
@@ -850,7 +878,7 @@
         }
 
         const separator = sepSelect.value;
-        const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
+        const frontHtml = frontDiv.innerHTML.replace(/\n/g, '').trim();
         const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
