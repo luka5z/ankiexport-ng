@@ -384,6 +384,12 @@
         const backDiv = document.getElementById('anki-back');
         if (!backDiv) return; // Only translate if we have a word loaded
 
+        // Check if already translated to avoid duplicates
+        if (backDiv.classList.contains('pl-translation')) {
+            alert("This content has already been translated.");
+            return;
+        }
+
         // Send innerHTML to preserve formatting (lists, spans)
         const contentToTranslate = backDiv.innerHTML;
 
