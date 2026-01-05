@@ -383,17 +383,16 @@
     async function translateWord() {
         const frontDiv = document.getElementById('anki-front');
         const backDiv = document.getElementById('anki-back');
-        if (!frontDiv) return; // Only translate if we have a word loaded
+        if (!frontDiv || !backDiv) return; // Only translate if we have a word loaded
 
-        // Check if already translated to avoid duplicates
-        if (backDiv.querySelector('.pl-translation')) return;
+        // Extract text from both sides to provide full context for translation
+        const textToTranslate = frontDiv.innerText + "\n\n" + backDiv.innerText;
 
-        const word = frontDiv.querySelector('.word-title')?.innerText;
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
 
-        loader.innerText = "Translating...";
+        loader.innerText = "Translating full card...";
         loader.style.display = 'block';
         transBtn.disabled = true;
 
@@ -404,7 +403,7 @@
                     'Content-Type': 'application/json',
                     'x-api-token': token 
                 },
-                body: JSON.stringify({ word: word })
+                body: JSON.stringify({ word: textToTranslate })
             });
 
             if (response.status === 403) {
@@ -415,13 +414,14 @@
             const data = await response.json();
             
             if (data.translation) {
-                // Insert Translation at the TOP of the Back card (Meaning side)
-                const transHtml = `
-                    <div class="pl-translation">
-                        <span class="pl-label">PL</span> ${data.translation}
-                    </div>
-                `;
-                backDiv.insertAdjacentHTML('afterbegin', transHtml);
+                // Replace content of backDiv with the full translation
+                // Convert newlines to <br> to preserve some structure
+                backDiv.innerHTML = data.translation.replace(/\n/g, '<br>');
+                
+                // Add the PL style to the whole block so it looks consistent
+                backDiv.classList.add('pl-translation');
+                // Remove the left-border/background override from the class if needed, 
+                // but pl-translation class logic (bg color + border) actually works nicely for the whole block.
             }
 
         } catch (error) {
