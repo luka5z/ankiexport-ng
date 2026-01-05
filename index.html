@@ -227,11 +227,55 @@
             padding: 8px;
             margin-left: 10px;
         }
-        #settings-panel input[type="checkbox"] {
+        
+        /* Toggle Switch Styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
             flex: initial;
-            width: auto;
-            margin-left: 10px;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+        }
+
+        .slider {
+            position: absolute;
             cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--text-muted);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
         }
 
         /* Hide Views Logic */
@@ -328,10 +372,13 @@
                 <input type="number" id="max-defs" value="3" min="1" max="20" onchange="updateSettings()">
             </div>
             
-            <!-- Auto Translate Setting -->
-            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
-                <label for="auto-translate" style="color: var(--text-main); font-size: 0.9rem;">Auto-Translate Headword:</label>
-                <input type="checkbox" id="auto-translate" checked onchange="updateSettings()">
+            <!-- Auto Translate Setting (Toggle Switch) -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 15px;">
+                <label for="auto-translate" style="color: var(--text-main); font-size: 0.9rem; cursor: pointer;">Auto-Translate Headword:</label>
+                <label class="switch">
+                    <input type="checkbox" id="auto-translate" checked onchange="updateSettings()">
+                    <span class="slider round"></span>
+                </label>
             </div>
         </div>
     </div>
