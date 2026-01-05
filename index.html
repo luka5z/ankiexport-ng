@@ -205,6 +205,29 @@
         li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
         .example { color: var(--text-muted); font-size: 0.9em; font-style: italic; display: block; margin-top: 4px;}
 
+        /* Settings Panel Styling */
+        .settings-toggle-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-muted);
+            border-radius: var(--radius); padding: 6px 12px; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.2s; margin-top: 15px;
+        }
+        .settings-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+        
+        #settings-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            display: none;
+        }
+        #settings-panel input {
+            flex: initial; /* Override global flex:1 */
+            width: 70px;
+            padding: 8px;
+            margin-left: 10px;
+        }
+
         /* Hide Views Logic */
         .view-hidden { display: none !important; }
 
@@ -279,6 +302,19 @@
         <div id="result-container"></div>
         <!-- Stats Bar -->
         <div id="stats-bar" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-height: 1.2em;"></div>
+
+        <!-- Settings Section at Bottom -->
+        <div style="text-align: right; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 20px;">
+            <button class="settings-toggle-btn" onclick="toggleSettings()">
+                <i class="fas fa-cog"></i> Settings
+            </button>
+        </div>
+        <div id="settings-panel">
+            <div style="display:flex; align-items:center; justify-content: space-between;">
+                <label for="max-meanings" style="color: var(--text-main); font-size: 0.9rem;">Max Part-of-Speech Elements:</label>
+                <input type="number" id="max-meanings" value="3" min="1" max="10" onchange="updateSettings()">
+            </div>
+        </div>
     </div>
 
 <script>
@@ -286,8 +322,11 @@
     // REPLACE THIS with your Terraform Output URL
     const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
     const TOKEN_KEY = "polyglot_api_token";
+    const SETTINGS_KEY = "polyglot_max_meanings";
 
     let isEditing = false;
+    let currentEntry = null; // Store data to allow re-rendering when settings change
+    let maxMeanings = 3;
 
     // --- AUTHENTICATION LOGIC ---
     function initAuth() {
@@ -314,6 +353,7 @@
         document.getElementById('result-container').innerHTML = '';
         document.getElementById('stats-bar').innerHTML = '';
         document.getElementById('action-bar').style.display = 'none';
+        currentEntry = null;
         clearError(); // Clear any existing errors on logout
         showLogin();
     }
@@ -326,6 +366,34 @@
     function showLogin() {
         document.getElementById('app-view').classList.add('view-hidden');
         document.getElementById('login-view').classList.remove('view-hidden');
+    }
+
+    // --- SETTINGS LOGIC ---
+    function initSettings() {
+        const saved = localStorage.getItem(SETTINGS_KEY);
+        if (saved) {
+            maxMeanings = parseInt(saved, 10);
+        }
+        document.getElementById('max-meanings').value = maxMeanings;
+    }
+
+    function toggleSettings() {
+        const panel = document.getElementById('settings-panel');
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateSettings() {
+        const input = document.getElementById('max-meanings');
+        const val = parseInt(input.value, 10);
+        if (val > 0) {
+            maxMeanings = val;
+            localStorage.setItem(SETTINGS_KEY, maxMeanings);
+            // Re-render if we have data
+            if (currentEntry) {
+                renderResult(currentEntry);
+                updateStats();
+            }
+        }
     }
 
     // --- UI HELPERS ---
@@ -389,6 +457,7 @@
         statsBar.innerHTML = '';
         actionBar.style.display = 'none';
         clearError(); // Reset error state
+        currentEntry = null; // Clear cached entry
         
         loader.innerText = "Finding definition...";
         loader.style.display = 'block';
@@ -411,29 +480,24 @@
             }
 
             if (!response.ok) {
-                // If it's a 404, we want to render the specific "Word not found" UI in the container.
-                // For other errors (500, etc), we use the top banner.
                 if (response.status === 404) {
                     throw new Error("Word not found");
                 } else {
-                    // Try to parse error message from backend
                     let errorMessage = `Error: ${response.status}`;
                     try {
                         const data = await response.json();
                         if (data.error) errorMessage = data.error;
-                    } catch (e) {
-                        // ignore json parse error
-                    }
+                    } catch (e) {}
                     showError(errorMessage);
                     return;
                 }
             }
             
             const entry = await response.json();
+            currentEntry = entry; // Store for setting updates
             renderResult(entry);
             updateStats();
             
-            // Enable translate button for new search
             const transBtn = document.getElementById('trans-btn');
             if (transBtn) transBtn.disabled = false;
             
@@ -537,7 +601,10 @@
             <div id="anki-back">
         `;
 
-        entry.meanings.forEach(meaning => {
+        // Apply Limit based on Settings
+        const meaningsToShow = entry.meanings.slice(0, maxMeanings);
+
+        meaningsToShow.forEach(meaning => {
             html += `
                 <div class="meaning-group" style="margin-bottom: 1.5rem;">
                     <span class="part-of-speech">${meaning.partOfSpeech}</span>
@@ -649,6 +716,7 @@
 
     // --- INITIALIZATION ---
     initTheme();
+    initSettings(); // Load Settings
     initAuth();
 
     window.addEventListener('DOMContentLoaded', () => {
