@@ -169,6 +169,19 @@
         .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
         .error { text-align: center; color: var(--sol-red); margin-top: 20px; }
 
+        /* Error Banner Styling */
+        .error-banner {
+            background-color: var(--sol-red);
+            color: #fff;
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
         /* Definitions Styling */
         .word-title { font-size: 1.8rem; font-weight: bold; margin: 0; }
         .phonetic { color: var(--text-muted); font-family: monospace; font-size:1.1rem; }
@@ -221,6 +234,9 @@
 
     <!-- MAIN APP VIEW -->
     <div id="app-view" class="container view-hidden">
+        <!-- Error Banner placed at the top of content -->
+        <div id="error-banner" class="error-banner"></div>
+
         <div class="header-row">
             <h1><i class="fas fa-book-open"></i> Polyglot</h1>
             <button class="theme-toggle" onclick="toggleTheme()" id="app-theme-btn">
@@ -261,6 +277,8 @@
 
         <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Processing...</div>
         <div id="result-container"></div>
+        <!-- Stats Bar -->
+        <div id="stats-bar" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-height: 1.2em;"></div>
     </div>
 
 <script>
@@ -294,7 +312,9 @@
         localStorage.removeItem(TOKEN_KEY);
         document.getElementById('word-input').value = '';
         document.getElementById('result-container').innerHTML = '';
+        document.getElementById('stats-bar').innerHTML = '';
         document.getElementById('action-bar').style.display = 'none';
+        clearError(); // Clear any existing errors on logout
         showLogin();
     }
 
@@ -306,6 +326,23 @@
     function showLogin() {
         document.getElementById('app-view').classList.add('view-hidden');
         document.getElementById('login-view').classList.remove('view-hidden');
+    }
+
+    // --- UI HELPERS ---
+    function showError(msg) {
+        const banner = document.getElementById('error-banner');
+        if (banner) {
+            banner.innerText = msg;
+            banner.style.display = 'block';
+        }
+    }
+
+    function clearError() {
+        const banner = document.getElementById('error-banner');
+        if (banner) {
+            banner.style.display = 'none';
+            banner.innerText = '';
+        }
     }
 
     // --- THEME MANAGEMENT ---
@@ -341,6 +378,7 @@
         const resultContainer = document.getElementById('result-container');
         const loader = document.getElementById('loader');
         const actionBar = document.getElementById('action-bar');
+        const statsBar = document.getElementById('stats-bar');
         const word = input.value.trim();
         const token = localStorage.getItem(TOKEN_KEY);
 
@@ -348,7 +386,10 @@
 
         input.blur(); 
         resultContainer.innerHTML = '';
+        statsBar.innerHTML = '';
         actionBar.style.display = 'none';
+        clearError(); // Reset error state
+        
         loader.innerText = "Finding definition...";
         loader.style.display = 'block';
         resetEditMode(); 
@@ -369,10 +410,28 @@
                 return;
             }
 
-            if (!response.ok) throw new Error("Word not found");
+            if (!response.ok) {
+                // If it's a 404, we want to render the specific "Word not found" UI in the container.
+                // For other errors (500, etc), we use the top banner.
+                if (response.status === 404) {
+                    throw new Error("Word not found");
+                } else {
+                    // Try to parse error message from backend
+                    let errorMessage = `Error: ${response.status}`;
+                    try {
+                        const data = await response.json();
+                        if (data.error) errorMessage = data.error;
+                    } catch (e) {
+                        // ignore json parse error
+                    }
+                    showError(errorMessage);
+                    return;
+                }
+            }
             
             const entry = await response.json();
             renderResult(entry);
+            updateStats();
             
             // Enable translate button for new search
             const transBtn = document.getElementById('trans-btn');
@@ -381,10 +440,14 @@
             actionBar.style.display = 'flex';
 
         } catch (error) {
-            resultContainer.innerHTML = `<div class="error">
-                <i class="fas fa-exclamation-circle fa-2x"></i><br><br>
-                Could not find definition for <b>"${word}"</b>.
-            </div>`;
+            if (error.message === "Word not found") {
+                resultContainer.innerHTML = `<div class="error">
+                    <i class="fas fa-exclamation-circle fa-2x"></i><br><br>
+                    Could not find definition for <b>"${word}"</b>.
+                </div>`;
+            } else {
+                showError("Network or unexpected error: " + error.message);
+            }
         } finally {
             loader.style.display = 'none';
         }
@@ -396,21 +459,18 @@
         const backDiv = document.getElementById('anki-back');
         if (!frontDiv || !backDiv) return;
 
-        // Check if already translated to avoid duplicates
         if (backDiv.classList.contains('pl-translation')) {
             return;
         }
 
-        // 1. Get Word Title (No Phonetics)
         const wordTitle = frontDiv.querySelector('.word-title')?.innerText || "";
-
-        // 2. Prepare HTML for translation
-        // We wrap the title in the same class to preserve the "Look & Feel" (Big Font) in the translation
         const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${backDiv.innerHTML}`;
 
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
+        
+        clearError(); // Reset error state
         let success = false;
 
         loader.innerText = "Translating formatting...";
@@ -432,22 +492,29 @@
                 logout(); return;
             }
 
+            if (!response.ok) {
+                let errorMessage = `Translation Error: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    if (data.error) errorMessage = data.error;
+                } catch (e) {}
+                showError(errorMessage);
+                return;
+            }
+
             const data = await response.json();
             
             if (data.translation) {
-                // Replace content of backDiv with the translated HTML
                 backDiv.innerHTML = data.translation;
-                
-                // Add the PL style
                 backDiv.classList.add('pl-translation');
                 success = true;
+                updateStats();
             }
 
         } catch (error) {
-            alert("Translation failed: " + error.message);
+            showError("Translation failed: " + error.message);
         } finally {
             loader.style.display = 'none';
-            // Only re-enable if failed, otherwise keep disabled to prevent duplicates
             if (!success) {
                 transBtn.disabled = false;
             }
@@ -488,6 +555,26 @@
 
         html += `</div>`;
         container.innerHTML = html;
+        
+        // Add listeners for editing updates
+        document.getElementById('result-container').addEventListener('input', updateStats);
+    }
+
+    function updateStats() {
+        const frontDiv = document.getElementById('anki-front');
+        const backDiv = document.getElementById('anki-back');
+        const statsDiv = document.getElementById('stats-bar');
+        
+        if (!frontDiv || !backDiv || !statsDiv) {
+            if(statsDiv) statsDiv.innerHTML = '';
+            return;
+        }
+
+        const frontLen = frontDiv.innerHTML.length;
+        const backLen = backDiv.innerHTML.length;
+        const total = frontLen + backLen;
+
+        statsDiv.innerHTML = `Chars (HTML): Front: <b>${frontLen}</b> | Back: <b>${backLen}</b> | Total: <b>${total}</b>`;
     }
 
     // --- EDITING & EXPORT LOGIC ---
@@ -535,7 +622,6 @@
         }
 
         const separator = sepSelect.value;
-        // Remove <hr> tags specifically from front card before export to keep Anki cards clean
         const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
         const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
