@@ -182,6 +182,10 @@
             font-size: 1.1rem;
         }
         .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+        .diki-label { color: var(--sol-cyan); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+        
+        .trans-slot { margin-bottom: 8px; }
+        .trans-slot:last-child { margin-bottom: 0; }
 
         /* 3. DEFINITIONS (Green) */
         #definitions-content {
@@ -203,6 +207,19 @@
 
         .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
         .error { text-align: center; color: var(--sol-red); margin-top: 20px; }
+
+        /* Error Banner Styling */
+        .error-banner {
+            background-color: var(--sol-red);
+            color: #fff;
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
 
         /* Modal Styles */
         .modal {
@@ -558,8 +575,14 @@
             updateStats();
             if (autoTranslateEnabled) {
                 const transDiv = document.getElementById('translate-div');
+                // Ensure transDiv exists before checking styles
                 if (transDiv && transDiv.style.display === 'none') {
-                    autoTranslate(currentEntry.word);
+                    // Start both translations
+                    const googleSlot = document.getElementById('google-slot');
+                    const dikiSlot = document.getElementById('diki-slot');
+                    
+                    if (googleSlot && googleSlot.innerHTML === '') autoTranslate(currentEntry.word);
+                    if (dikiSlot && dikiSlot.innerHTML === '') fetchDikiTranslations(currentEntry.word);
                 }
             }
         }
@@ -638,13 +661,13 @@
         loader.style.display = 'block';
         resetEditMode(); 
 
-        // 1. Initial Render (Skeleton: Front + Translate Container)
-        // We pass { word: word } so renderResult can build the basic HTML structure.
+        // 1. Initial Render (Skeleton: Front + Translate Container with slots)
         renderResult({ word: word }); 
         
-        // 2. Auto Translate (Runs in parallel if enabled)
+        // 2. Trigger Parallel Translations (if enabled)
         if (autoTranslateEnabled) {
-            autoTranslate(word);
+            autoTranslate(word);           // Google Translate
+            fetchDikiTranslations(word);   // Diki Web Scraper
         }
 
         try {
@@ -666,14 +689,11 @@
             if (!response.ok) {
                 if (response.status === 404) {
                     // Word not found in dictionary.
-                    // Front and Translate are already rendered.
-                    // Empty definitions content and show error modal
                     const defsContent = document.getElementById('definitions-content');
                     if (defsContent) {
                         defsContent.innerHTML = ''; 
                     }
                     updateStats();
-                    // Show action bar so user can still export the translation if available
                     actionBar.style.display = 'flex';
                     showModalError(`Could not find definition for <b>"${word}"</b>.`);
                     return;
@@ -693,8 +713,6 @@
             currentEntry = entry; // Store for setting updates
             
             // 4. Success - Update Specific Parts of DOM
-            
-            // Update Phonetic
             const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
             const pEl = document.querySelector('.phonetic');
             if(pEl) pEl.innerText = phoneticText;
@@ -717,10 +735,12 @@
         }
     }
 
-    // --- AUTO TRANSLATE LOGIC ---
+    // --- AUTO TRANSLATE LOGIC (Google) ---
     async function autoTranslate(word) {
-        const transDiv = document.getElementById('translate-div');
-        if (!transDiv) return;
+        // Target specific slot to avoid race conditions
+        const googleSlot = document.getElementById('google-slot');
+        const parentDiv = document.getElementById('translate-div');
+        if (!googleSlot) return;
         
         const token = localStorage.getItem(TOKEN_KEY);
 
@@ -742,11 +762,11 @@
             const data = await response.json();
             
             if (data.translation) {
-                transDiv.innerHTML = `<span class="pl-label">PL</span> ${data.translation}`;
-                // Apply styling class (Violet background)
-                transDiv.className = 'pl-translation'; 
-                transDiv.style.display = 'block';
-                updateStats(); // Update char count
+                googleSlot.innerHTML = `<span class="pl-label">PL</span> ${data.translation}`;
+                // Ensure parent container is visible and styled
+                parentDiv.classList.add('pl-translation'); 
+                parentDiv.style.display = 'block';
+                updateStats(); 
             }
 
         } catch (error) {
@@ -754,9 +774,50 @@
         }
     }
 
+    // --- DIKI TRANSLATE LOGIC ---
+    async function fetchDikiTranslations(word) {
+        // Target specific slot
+        const dikiSlot = document.getElementById('diki-slot');
+        const parentDiv = document.getElementById('translate-div');
+        if (!dikiSlot) return;
+
+        const token = localStorage.getItem(TOKEN_KEY);
+
+        try {
+            const response = await fetch(`${API_BASE}/translate_web`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
+                body: JSON.stringify({ word: word })
+            });
+
+            if (!response.ok) {
+                console.warn("Diki translation failed", response.status);
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (data.translations && data.translations.length > 0) {
+                // Join translations with commas
+                const translationsText = data.translations.join(", ");
+                dikiSlot.innerHTML = `<span class="diki-label">DIKI</span> ${translationsText}`;
+                
+                // Ensure parent container is visible and styled
+                parentDiv.classList.add('pl-translation'); 
+                parentDiv.style.display = 'block';
+                updateStats();
+            }
+
+        } catch (error) {
+            console.error("Diki translation error:", error);
+        }
+    }
+
     // --- MANUAL TRANSLATE LOGIC (CONTEXT) ---
     async function translateWord() {
-        // Target specifically the definitions content, ignoring the auto-translate div
         const defsContent = document.getElementById('definitions-content');
         if (!defsContent) return;
 
@@ -767,14 +828,13 @@
         const frontDiv = document.getElementById('anki-front');
         const wordTitle = frontDiv.querySelector('.word-title')?.innerText || "";
         
-        // We still provide full context to translation including headword, but we only replace defsContent
         const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${defsContent.innerHTML}`;
 
         const token = localStorage.getItem(TOKEN_KEY);
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
         
-        closeModal(); // Reset error state
+        closeModal(); 
         let success = false;
 
         loader.innerText = "Translating formatting...";
@@ -809,11 +869,9 @@
             const data = await response.json();
             
             if (data.translation) {
-                // Replace only definitions content
                 defsContent.innerHTML = data.translation;
-                // Add class for styling (Violet)
                 defsContent.classList.add('pl-translation'); 
-                // Important: Override border/bg to match violet theme if we want context translation to look like translation
+                // Override border/bg for context section
                 defsContent.style.backgroundColor = "rgba(108, 113, 196, 0.1)";
                 defsContent.style.borderLeftColor = "var(--sol-violet)";
                 
@@ -833,7 +891,6 @@
 
     function renderResult(entry) {
         const container = document.getElementById('result-container');
-        // Handle phonetics logic only if present (entry.phonetic might not exist in skeleton render)
         const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
 
         let html = `
@@ -845,9 +902,6 @@
             </div>
             
             <div id="anki-back">
-                <!-- Auto Translation Container -->
-                <div id="translate-div" style="display:none; margin-bottom: 20px;"></div>
-                
                 <!-- Action Buttons: Translate Context & Edit -->
                 <div style="display:flex; gap: 10px; margin-bottom: 15px;">
                      <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="flex:1; color: var(--sol-violet); border-color: var(--sol-violet);">
@@ -857,12 +911,17 @@
                         <i class="fas fa-pen"></i> Edit
                     </button>
                 </div>
+
+                <!-- Auto Translation Container with Slots -->
+                <div id="translate-div" style="display:none; margin-bottom: 20px;">
+                    <div id="google-slot" class="trans-slot"></div>
+                    <div id="diki-slot" class="trans-slot"></div>
+                </div>
                 
                 <!-- Definitions Container -->
                 <div id="definitions-content">
         `;
 
-        // If we have meanings (full render), generate them. Otherwise leave empty.
         if (entry.meanings) {
             html += generateDefinitionsHtml(entry.meanings);
         }
@@ -870,7 +929,6 @@
         html += `</div></div>`; // Close definitions-content and anki-back
         container.innerHTML = html;
         
-        // Add listeners for editing updates
         document.getElementById('result-container').addEventListener('input', updateStats);
     }
 
@@ -878,11 +936,9 @@
         if (!meanings) return '';
         let html = '';
         
-        // Apply Limit based on Settings (Max Groups)
         const meaningsToShow = meanings.slice(0, maxMeanings);
 
         meaningsToShow.forEach(meaning => {
-            // Apply Limit based on Settings (Max Definitions per Group)
             const defsToShow = meaning.definitions.slice(0, maxDefs);
 
             html += `
@@ -939,7 +995,6 @@
 
     function resetEditMode() {
         isEditing = false;
-        // Re-query definition content because it might not exist if no search
         const container = document.getElementById('definitions-content');
         const btn = document.getElementById('edit-btn');
         if(container) {
@@ -953,11 +1008,9 @@
 
     function exportToAnki() {
         const frontDiv = document.getElementById('anki-front');
-        // Grab components individually to exclude buttons
         const transDiv = document.getElementById('translate-div');
         const defsDiv = document.getElementById('definitions-content');
         
-        // Use the setting-separator directly as the source of truth
         const sepSelect = document.getElementById('setting-separator');
 
         if (!frontDiv || !defsDiv) {
@@ -968,16 +1021,11 @@
         const separator = sepSelect.value;
         const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
         
-        // Construct back HTML manually to exclude buttons
         let backHtml = "";
         if (transDiv && transDiv.style.display !== 'none') {
-            // Include auto translation if visible
             backHtml += transDiv.outerHTML;
         }
-        // Include definitions (using outerHTML to keep the green border styling/container)
         backHtml += defsDiv.outerHTML;
-        
-        // Clean newlines
         backHtml = backHtml.replace(/\n/g, '').trim();
 
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
@@ -1012,34 +1060,25 @@
         const urlParams = new URLSearchParams(window.location.search);
         const wordParam = urlParams.get('w');
         
-        // 1. Handle "Share Target" (Text sent from Android)
         if (wordParam) {
             const input = document.getElementById('word-input');
             input.value = wordParam;
             if (localStorage.getItem(TOKEN_KEY)) {
                 searchWord();
             }
-            // Clean URL so refreshing doesn't re-trigger search
             window.history.replaceState({}, document.title, window.location.pathname);
             return;
         }
 
-        // 2. Handle "App Shortcuts" (Long press -> New Search)
         const actionParam = urlParams.get('action');
         if (actionParam === 'new_search') {
             const input = document.getElementById('word-input');
-            
-            // Clear everything
             input.value = '';
             document.getElementById('result-container').innerHTML = '';
             document.getElementById('stats-bar').innerHTML = '';
             document.getElementById('action-bar').style.display = 'none';
             currentEntry = null;
-            
-            // Focus input immediately
             setTimeout(() => input.focus(), 100);
-            
-            // Clean URL
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     });
