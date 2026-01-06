@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polyglot</title>
+    <!-- Link the Manifest for Android Integration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#268bd2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         /* --- SOLARIZED PALETTE & THEME VARIABLES --- */
@@ -306,7 +309,7 @@
             body { padding: 0; align-items: flex-start; }
             .container { box-shadow: none; border-radius: 0; padding: 1rem; max-width: 100%; min-height: 100vh;}
             .action-bar { flex-direction: column; gap: 12px; }
-            button.action-btn { width: 100%; padding: 14px; }
+            button.action-btn, .separator-select { width: 100%; padding: 14px; }
         }
     </style>
 </head>
@@ -352,6 +355,13 @@
                 <i class="fas fa-pen"></i> Edit
             </button>
             
+            <select id="separator-select" class="separator-select" aria-label="CSV Separator">
+                <option value=";" selected>Sep: ;</option>
+                <option value=",">Sep: ,</option>
+                <option value="    ">Sep: Tab</option>
+                <option value="|">Sep: |</option>
+            </select>
+
             <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
                 <i class="fas fa-download"></i> CSV
             </button>
@@ -376,7 +386,8 @@
             <!-- Separator Setting -->
             <div style="display:flex; align-items:center; justify-content: space-between;">
                 <label for="separator-select" style="color: var(--text-main); font-size: 0.9rem;">CSV Separator:</label>
-                <select id="separator-select" class="separator-select" aria-label="CSV Separator" style="padding: 5px;">
+                <!-- This select duplicates the one in action bar but for settings view completeness/fallback -->
+                <select id="setting-separator" class="separator-select" style="padding: 5px;" onchange="document.getElementById('separator-select').value = this.value">
                     <option value=";" selected>Semicolon (;)</option>
                     <option value=",">Comma (,)</option>
                     <option value="    ">Tab</option>
@@ -751,8 +762,6 @@
                 // Add class for styling (Violet)
                 defsContent.classList.add('pl-translation'); 
                 // Important: Override border/bg to match violet theme if we want context translation to look like translation
-                // OR we can keep it as definitions style but translated. 
-                // Given the visual cues, let's switch it to violet to indicate it's translated.
                 defsContent.style.backgroundColor = "rgba(108, 113, 196, 0.1)";
                 defsContent.style.borderLeftColor = "var(--sol-violet)";
                 
@@ -915,10 +924,36 @@
     window.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const wordParam = urlParams.get('w');
-        if (wordParam && localStorage.getItem(TOKEN_KEY)) {
+        
+        // 1. Handle "Share Target" (Text sent from Android)
+        if (wordParam) {
             const input = document.getElementById('word-input');
             input.value = wordParam;
-            searchWord();
+            if (localStorage.getItem(TOKEN_KEY)) {
+                searchWord();
+            }
+            // Clean URL so refreshing doesn't re-trigger search
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+
+        // 2. Handle "App Shortcuts" (Long press -> New Search)
+        const actionParam = urlParams.get('action');
+        if (actionParam === 'new_search') {
+            const input = document.getElementById('word-input');
+            
+            // Clear everything
+            input.value = '';
+            document.getElementById('result-container').innerHTML = '';
+            document.getElementById('stats-bar').innerHTML = '';
+            document.getElementById('action-bar').style.display = 'none';
+            currentEntry = null;
+            
+            // Focus input immediately
+            setTimeout(() => input.focus(), 100);
+            
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     });
 
