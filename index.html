@@ -1132,7 +1132,12 @@
             backHtml += smartDiv.outerHTML;
         }
         backHtml += defsDiv.outerHTML;
+        
+        // Cleanup for CSV: 
+        // 1. Remove newlines
         backHtml = backHtml.replace(/\n/g, '').trim();
+        // 2. Remove Labels (TRANSLATE, WEB, PL, DIKI) so they don't appear in Anki cards
+        backHtml = backHtml.replace(/<span class="(pl-label|diki-label)">.*?<\/span>/g, '');
 
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
