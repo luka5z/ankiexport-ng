@@ -592,6 +592,15 @@
         loader.style.display = 'block';
         resetEditMode(); 
 
+        // 1. Initial Render (Skeleton: Front + Translate Container)
+        // We pass { word: word } so renderResult can build the basic HTML structure.
+        renderResult({ word: word }); 
+        
+        // 2. Auto Translate (Runs in parallel if enabled)
+        if (autoTranslateEnabled) {
+            autoTranslate(word);
+        }
+
         try {
             const response = await fetch(`${API_BASE}/dictionary`, {
                 method: 'POST',
@@ -610,8 +619,19 @@
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    throw new Error("Word not found");
+                    // Word not found in dictionary.
+                    // Front and Translate are already rendered.
+                    // Just update Definitions area to say "Not found".
+                    const defsContent = document.getElementById('definitions-content');
+                    if (defsContent) {
+                        defsContent.innerHTML = '<div style="opacity:0.6; font-style:italic; padding: 10px;">No definitions found in dictionary.</div>';
+                    }
+                    updateStats();
+                    // Show action bar so user can still export the translation if available
+                    actionBar.style.display = 'flex';
+                    return;
                 } else {
+                    // Other errors
                     let errorMessage = `Error: ${response.status}`;
                     try {
                         const data = await response.json();
@@ -624,25 +644,27 @@
             
             const entry = await response.json();
             currentEntry = entry; // Store for setting updates
-            renderResult(entry);
-            updateStats();
             
-            // Trigger automatic translation for the word IF ENABLED
-            if (autoTranslateEnabled) {
-                autoTranslate(entry.word);
+            // 4. Success - Update Specific Parts of DOM
+            
+            // Update Phonetic
+            const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
+            const pEl = document.querySelector('.phonetic');
+            if(pEl) pEl.innerText = phoneticText;
+            
+            // Update Definitions Content
+            const defsContent = document.getElementById('definitions-content');
+            if(defsContent) {
+                defsContent.innerHTML = generateDefinitionsHtml(entry.meanings);
             }
             
+            updateStats();
+            
+            // Show Actions
             actionBar.style.display = 'flex';
 
         } catch (error) {
-            if (error.message === "Word not found") {
-                resultContainer.innerHTML = `<div class="error">
-                    <i class="fas fa-exclamation-circle fa-2x"></i><br><br>
-                    Could not find definition for <b>"${word}"</b>.
-                </div>`;
-            } else {
-                showError("Network or unexpected error: " + error.message);
-            }
+            showError("Network or unexpected error: " + error.message);
         } finally {
             loader.style.display = 'none';
         }
@@ -666,7 +688,6 @@
             });
 
             if (!response.ok) {
-                // We can silently fail for auto-translate or log
                 console.warn("Auto-translation failed", response.status);
                 return;
             }
@@ -765,6 +786,7 @@
 
     function renderResult(entry) {
         const container = document.getElementById('result-container');
+        // Handle phonetics logic only if present (entry.phonetic might not exist in skeleton render)
         const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
 
         let html = `
@@ -773,7 +795,6 @@
                     <span class="word-title">${entry.word}</span> 
                     <span class="phonetic">${phoneticText}</span>
                 </div>
-                <!-- HR removed for cleaner UI with colored blocks -->
             </div>
             
             <div id="anki-back">
@@ -794,8 +815,24 @@
                 <div id="definitions-content">
         `;
 
+        // If we have meanings (full render), generate them. Otherwise leave empty.
+        if (entry.meanings) {
+            html += generateDefinitionsHtml(entry.meanings);
+        }
+
+        html += `</div></div>`; // Close definitions-content and anki-back
+        container.innerHTML = html;
+        
+        // Add listeners for editing updates
+        document.getElementById('result-container').addEventListener('input', updateStats);
+    }
+
+    function generateDefinitionsHtml(meanings) {
+        if (!meanings) return '';
+        let html = '';
+        
         // Apply Limit based on Settings (Max Groups)
-        const meaningsToShow = entry.meanings.slice(0, maxMeanings);
+        const meaningsToShow = meanings.slice(0, maxMeanings);
 
         meaningsToShow.forEach(meaning => {
             // Apply Limit based on Settings (Max Definitions per Group)
@@ -815,12 +852,7 @@
                 </div><br>
             `;
         });
-
-        html += `</div></div>`; // Close definitions-content and anki-back
-        container.innerHTML = html;
-        
-        // Add listeners for editing updates
-        document.getElementById('result-container').addEventListener('input', updateStats);
+        return html;
     }
 
     function updateStats() {
