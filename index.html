@@ -129,7 +129,6 @@
         /* Actions Bar */
         .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; flex-wrap: wrap;}
         
-        /* Removed btn-trans style as it's no longer in action bar */
         .btn-edit { background-color: var(--warning); flex: 1; color: #fff; }
         .btn-save { background-color: var(--secondary); flex: 1; color: #fff; }
         .btn-export { background-color: var(--text-muted); flex: 2; color: #fff; }
@@ -191,13 +190,15 @@
             padding: 15px;
             margin-bottom: 15px;
             border-radius: 4px;
+            transition: all 0.3s;
         }
 
         .editing-mode {
             background-color: rgba(181, 137, 0, 0.1) !important; 
+            border-left-color: var(--sol-yellow) !important;
             border-color: var(--warning) !important;
             outline: none;
-            padding: 1rem;
+            /* padding: 1rem; already has padding */
         }
 
         .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
@@ -347,10 +348,7 @@
         </div>
 
         <div class="action-bar" id="action-bar">
-            <!-- Removed Translate Button and Separator Select from top -->
-            <button id="edit-btn" class="action-btn btn-edit" onclick="toggleEditMode()">
-                <i class="fas fa-pen"></i> Edit
-            </button>
+            <!-- Edit Button removed from here, now inside Back card -->
             
             <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
                 <i class="fas fa-download"></i> CSV
@@ -779,15 +777,18 @@
             </div>
             
             <div id="anki-back">
-                <!-- Translation Button at Top Right of Back Div -->
-                <div style="display:flex; justify-content: flex-end; margin-bottom: 10px;">
-                     <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="color: var(--sol-violet); border-color: var(--sol-violet); font-size: 0.8rem; padding: 4px 10px;">
+                <!-- Auto Translation Container -->
+                <div id="translate-div" style="display:none; margin-bottom: 20px;"></div>
+                
+                <!-- Action Buttons: Translate Context & Edit -->
+                <div style="display:flex; gap: 10px; margin-bottom: 15px;">
+                     <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="flex:1; color: var(--sol-violet); border-color: var(--sol-violet);">
                         <i class="fas fa-language"></i> Translate Context
                     </button>
+                     <button id="edit-btn" onclick="toggleEditMode()" class="settings-toggle-btn" style="flex:1; color: var(--sol-yellow); border-color: var(--sol-yellow);">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
                 </div>
-
-                <!-- Auto Translation Container -->
-                <div id="translate-div" style="display:none;"></div>
                 
                 <!-- Definitions Container -->
                 <div id="definitions-content">
@@ -841,7 +842,7 @@
 
     // --- EDITING & EXPORT LOGIC ---
     function toggleEditMode() {
-        const container = document.getElementById('result-container');
+        const container = document.getElementById('definitions-content');
         const btn = document.getElementById('edit-btn');
         isEditing = !isEditing;
 
@@ -850,18 +851,17 @@
             container.classList.add('editing-mode');
             container.focus();
             btn.innerHTML = '<i class="fas fa-save"></i> Save';
-            btn.className = 'btn-save action-btn';
         } else {
             container.contentEditable = "false";
             container.classList.remove('editing-mode');
             btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
-            btn.className = 'btn-edit action-btn';
         }
     }
 
     function resetEditMode() {
         isEditing = false;
-        const container = document.getElementById('result-container');
+        // Re-query definition content because it might not exist if no search
+        const container = document.getElementById('definitions-content');
         const btn = document.getElementById('edit-btn');
         if(container) {
             container.contentEditable = "false";
@@ -869,24 +869,38 @@
         }
         if(btn) {
             btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
-            btn.className = 'btn-edit action-btn';
         }
     }
 
     function exportToAnki() {
         const frontDiv = document.getElementById('anki-front');
-        const backDiv = document.getElementById('anki-back');
+        // Grab components individually to exclude buttons
+        const transDiv = document.getElementById('translate-div');
+        const defsDiv = document.getElementById('definitions-content');
+        
         // Use the setting-separator directly as the source of truth
         const sepSelect = document.getElementById('setting-separator');
 
-        if (!frontDiv || !backDiv) {
+        if (!frontDiv || !defsDiv) {
             alert("No content to export!");
             return;
         }
 
         const separator = sepSelect.value;
         const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
-        const backHtml = backDiv.innerHTML.replace(/\n/g, '').trim();
+        
+        // Construct back HTML manually to exclude buttons
+        let backHtml = "";
+        if (transDiv && transDiv.style.display !== 'none') {
+            // Include auto translation if visible
+            backHtml += transDiv.outerHTML;
+        }
+        // Include definitions (using outerHTML to keep the green border styling/container)
+        backHtml += defsDiv.outerHTML;
+        
+        // Clean newlines
+        backHtml = backHtml.replace(/\n/g, '').trim();
+
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
         const wordText = frontDiv.querySelector('.word-title')?.innerText || 'export';
