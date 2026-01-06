@@ -157,7 +157,7 @@
         }
         
         /* Font for Anki Cards Content */
-        #anki-front, #translate-div, #definitions-content {
+        #anki-front, #translate-div, #definitions-content, #smart-context-div {
             font-family: "Souvenir Std", Georgia, serif;
         }
 
@@ -195,6 +195,15 @@
             margin-bottom: 15px;
             border-radius: 4px;
             transition: all 0.3s;
+        }
+
+        /* 4. SMART CONTEXT (Magenta) */
+        .magic-section {
+            background-color: rgba(211, 54, 130, 0.08); /* Magenta tint */
+            border-left: 4px solid var(--sol-magenta);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
         }
 
         .editing-mode {
@@ -465,6 +474,7 @@
 
 <script>
     // --- CONFIGURATION ---
+    const apiKey = ""; // Provided by environment at runtime
     // REPLACE THIS with your Terraform Output URL
     const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
     const TOKEN_KEY = "polyglot_api_token";
@@ -762,7 +772,7 @@
             const data = await response.json();
             
             if (data.translation) {
-                googleSlot.innerHTML = `<span class="pl-label">PL</span> ${data.translation}`;
+                googleSlot.innerHTML = `<span class="pl-label">TRANSLATE</span> ${data.translation}`;
                 // Ensure parent container is visible and styled
                 parentDiv.classList.add('pl-translation'); 
                 parentDiv.style.display = 'block';
@@ -803,7 +813,7 @@
             if (data.translations && data.translations.length > 0) {
                 // Join translations with commas
                 const translationsText = data.translations.join(", ");
-                dikiSlot.innerHTML = `<span class="diki-label">DIKI</span> ${translationsText}`;
+                dikiSlot.innerHTML = `<span class="diki-label">WEB</span> ${translationsText}`;
                 
                 // Ensure parent container is visible and styled
                 parentDiv.classList.add('pl-translation'); 
@@ -889,6 +899,90 @@
         }
     }
 
+    // --- GEMINI SMART CONTEXT LOGIC ---
+    async function generateSmartContext() {
+        const frontDiv = document.getElementById('anki-front');
+        const contextDiv = document.getElementById('smart-context-div');
+        if (!frontDiv || !contextDiv) return;
+
+        const word = frontDiv.querySelector('.word-title')?.innerText || "";
+        if (!word) return;
+
+        const loader = document.getElementById('loader');
+        const btn = document.getElementById('magic-btn');
+        
+        loader.innerText = "Generating magic context... ✨";
+        loader.style.display = 'block';
+        if(btn) btn.disabled = true;
+
+        const prompt = `Generate a helpful mnemonic and 3 distinct example sentences for the English word "${word}". 
+        Return the response as a JSON object with keys "mnemonic" and "examples" (array of strings). 
+        Do not use markdown formatting in the JSON.`;
+
+        try {
+            const result = await callGeminiWithBackoff(prompt);
+            const data = JSON.parse(result);
+            
+            let html = `<div class="magic-section">`;
+            if (data.mnemonic) {
+                html += `<p><strong>🧠 Mnemonic:</strong> ${data.mnemonic}</p>`;
+            }
+            if (data.examples && data.examples.length > 0) {
+                html += `<p><strong>📝 Examples:</strong></p><ul>`;
+                data.examples.forEach(ex => html += `<li>${ex}</li>`);
+                html += `</ul>`;
+            }
+            html += `</div>`;
+
+            contextDiv.innerHTML = html;
+            contextDiv.style.display = 'block';
+            updateStats();
+
+        } catch (error) {
+            showModalError("Gemini Error: " + error.message);
+        } finally {
+            loader.style.display = 'none';
+            if(btn) btn.disabled = false;
+        }
+    }
+
+    async function callGeminiWithBackoff(prompt, retries = 3) {
+        // NOTE: In a real app, this should be proxied through your backend to hide the key.
+        // For this demo context, we use the provided environment key.
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+        };
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    if (response.status === 429) { // Rate limit
+                        throw new Error("Rate limit exceeded");
+                    }
+                    const errText = await response.text();
+                    throw new Error(`Gemini API Error: ${response.status} ${errText}`);
+                }
+
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+
+            } catch (err) {
+                if (i === retries - 1) throw err;
+                const delay = Math.pow(2, i) * 1000 + Math.random() * 500;
+                await new Promise(res => setTimeout(res, delay));
+            }
+        }
+    }
+
     function renderResult(entry) {
         const container = document.getElementById('result-container');
         const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
@@ -902,10 +996,13 @@
             </div>
             
             <div id="anki-back">
-                <!-- Action Buttons: Translate Context & Edit -->
+                <!-- Action Buttons: Translate Context & Edit & Magic -->
                 <div style="display:flex; gap: 10px; margin-bottom: 15px;">
                      <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="flex:1; color: var(--sol-violet); border-color: var(--sol-violet);">
-                        <i class="fas fa-language"></i> Translate Context
+                        <i class="fas fa-language"></i> Translate
+                    </button>
+                     <button id="magic-btn" onclick="generateSmartContext()" class="settings-toggle-btn" style="flex:1; color: var(--sol-magenta); border-color: var(--sol-magenta);">
+                        <i class="fas fa-magic"></i> Context
                     </button>
                      <button id="edit-btn" onclick="toggleEditMode()" class="settings-toggle-btn" style="flex:1; color: var(--sol-yellow); border-color: var(--sol-yellow);">
                         <i class="fas fa-pen"></i> Edit
@@ -918,6 +1015,9 @@
                     <div id="diki-slot" class="trans-slot"></div>
                 </div>
                 
+                <!-- Smart Context Container -->
+                <div id="smart-context-div" style="display:none;"></div>
+
                 <!-- Definitions Container -->
                 <div id="definitions-content">
         `;
@@ -1008,7 +1108,9 @@
 
     function exportToAnki() {
         const frontDiv = document.getElementById('anki-front');
+        // Grab components individually to exclude buttons
         const transDiv = document.getElementById('translate-div');
+        const smartDiv = document.getElementById('smart-context-div');
         const defsDiv = document.getElementById('definitions-content');
         
         const sepSelect = document.getElementById('setting-separator');
@@ -1021,9 +1123,13 @@
         const separator = sepSelect.value;
         const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
         
+        // Construct back HTML manually to exclude buttons
         let backHtml = "";
         if (transDiv && transDiv.style.display !== 'none') {
             backHtml += transDiv.outerHTML;
+        }
+        if (smartDiv && smartDiv.style.display !== 'none') {
+            backHtml += smartDiv.outerHTML;
         }
         backHtml += defsDiv.outerHTML;
         backHtml = backHtml.replace(/\n/g, '').trim();
