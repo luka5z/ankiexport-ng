@@ -204,17 +204,51 @@
         .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
         .error { text-align: center; color: var(--sol-red); margin-top: 20px; }
 
-        /* Error Banner Styling */
-        .error-banner {
-            background-color: var(--sol-red);
-            color: #fff;
-            padding: 12px;
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 2000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: var(--surface);
+            margin: auto;
+            padding: 20px;
+            border: 1px solid var(--border);
+            width: 90%;
+            max-width: 400px;
             border-radius: var(--radius);
-            margin-bottom: 1.5rem;
-            display: none;
-            text-align: center;
-            font-weight: 600;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: relative;
+            animation: fadeIn 0.2s;
+            color: var(--text-main);
+        }
+
+        .close-modal-btn {
+            color: var(--text-muted);
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .close-modal-btn:hover {
+            color: var(--sol-red);
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(-10px);}
+            to {opacity: 1; transform: translateY(0);}
         }
 
         /* Definitions Styling */
@@ -332,9 +366,7 @@
 
     <!-- MAIN APP VIEW -->
     <div id="app-view" class="container view-hidden">
-        <!-- Error Banner placed at the top of content -->
-        <div id="error-banner" class="error-banner"></div>
-
+        
         <div class="header-row">
             <h1><i class="fas fa-book-open"></i> Polyglot</h1>
             <button class="theme-toggle" onclick="toggleTheme()" id="app-theme-btn">
@@ -406,6 +438,14 @@
         </div>
     </div>
 
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal-btn" onclick="closeModal()">&times;</span>
+            <div id="modal-message"></div>
+        </div>
+    </div>
+
 <script>
     // --- CONFIGURATION ---
     // REPLACE THIS with your Terraform Output URL
@@ -447,7 +487,7 @@
         document.getElementById('stats-bar').innerHTML = '';
         document.getElementById('action-bar').style.display = 'none';
         currentEntry = null;
-        clearError(); // Clear any existing errors on logout
+        closeModal(); // Clear any existing errors on logout
         showLogin();
     }
 
@@ -526,19 +566,25 @@
     }
 
     // --- UI HELPERS ---
-    function showError(msg) {
-        const banner = document.getElementById('error-banner');
-        if (banner) {
-            banner.innerText = msg;
-            banner.style.display = 'block';
+    function showModalError(msg) {
+        const modal = document.getElementById('error-modal');
+        const msgDiv = document.getElementById('modal-message');
+        if(modal && msgDiv) {
+            msgDiv.innerHTML = msg;
+            modal.style.display = 'flex'; // Use flex for centering
         }
     }
 
-    function clearError() {
-        const banner = document.getElementById('error-banner');
-        if (banner) {
-            banner.style.display = 'none';
-            banner.innerText = '';
+    function closeModal() {
+        const modal = document.getElementById('error-modal');
+        if(modal) modal.style.display = 'none';
+    }
+
+    // Close on click outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('error-modal');
+        if (event.target == modal) {
+            modal.style.display = "none";
         }
     }
 
@@ -585,7 +631,7 @@
         resultContainer.innerHTML = '';
         statsBar.innerHTML = '';
         actionBar.style.display = 'none';
-        clearError(); // Reset error state
+        closeModal(); // Reset error state
         currentEntry = null; // Clear cached entry
         
         loader.innerText = "Finding definition...";
@@ -621,14 +667,15 @@
                 if (response.status === 404) {
                     // Word not found in dictionary.
                     // Front and Translate are already rendered.
-                    // Just update Definitions area to say "Not found".
+                    // Empty definitions content and show error modal
                     const defsContent = document.getElementById('definitions-content');
                     if (defsContent) {
-                        defsContent.innerHTML = '<div style="opacity:0.6; font-style:italic; padding: 10px;">No definitions found in dictionary.</div>';
+                        defsContent.innerHTML = ''; 
                     }
                     updateStats();
                     // Show action bar so user can still export the translation if available
                     actionBar.style.display = 'flex';
+                    showModalError(`Could not find definition for <b>"${word}"</b>.`);
                     return;
                 } else {
                     // Other errors
@@ -637,7 +684,7 @@
                         const data = await response.json();
                         if (data.error) errorMessage = data.error;
                     } catch (e) {}
-                    showError(errorMessage);
+                    showModalError(errorMessage);
                     return;
                 }
             }
@@ -664,7 +711,7 @@
             actionBar.style.display = 'flex';
 
         } catch (error) {
-            showError("Network or unexpected error: " + error.message);
+            showModalError("Network or unexpected error: " + error.message);
         } finally {
             loader.style.display = 'none';
         }
@@ -727,7 +774,7 @@
         const loader = document.getElementById('loader');
         const transBtn = document.getElementById('trans-btn');
         
-        clearError(); // Reset error state
+        closeModal(); // Reset error state
         let success = false;
 
         loader.innerText = "Translating formatting...";
@@ -755,7 +802,7 @@
                     const data = await response.json();
                     if (data.error) errorMessage = data.error;
                 } catch (e) {}
-                showError(errorMessage);
+                showModalError(errorMessage);
                 return;
             }
 
@@ -775,7 +822,7 @@
             }
 
         } catch (error) {
-            showError("Translation failed: " + error.message);
+            showModalError("Translation failed: " + error.message);
         } finally {
             loader.style.display = 'none';
             if (!success && transBtn) {
