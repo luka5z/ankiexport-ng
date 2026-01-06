@@ -129,7 +129,7 @@
         /* Actions Bar */
         .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; flex-wrap: wrap;}
         
-        .btn-trans { background-color: var(--sol-violet); flex: 1; color: #fff; }
+        /* Removed btn-trans style as it's no longer in action bar */
         .btn-edit { background-color: var(--warning); flex: 1; color: #fff; }
         .btn-save { background-color: var(--secondary); flex: 1; color: #fff; }
         .btn-export { background-color: var(--text-muted); flex: 2; color: #fff; }
@@ -235,6 +235,7 @@
             font-size: 0.85rem; transition: all 0.2s;
         }
         .settings-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .settings-toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #settings-panel {
             margin-top: 1rem;
@@ -346,22 +347,11 @@
         </div>
 
         <div class="action-bar" id="action-bar">
-            <!-- New Translate Button -->
-            <button id="trans-btn" class="action-btn btn-trans" onclick="translateWord()">
-                <i class="fas fa-language"></i> PL
-            </button>
-
+            <!-- Removed Translate Button and Separator Select from top -->
             <button id="edit-btn" class="action-btn btn-edit" onclick="toggleEditMode()">
                 <i class="fas fa-pen"></i> Edit
             </button>
             
-            <select id="separator-select" class="separator-select" aria-label="CSV Separator">
-                <option value=";" selected>Sep: ;</option>
-                <option value=",">Sep: ,</option>
-                <option value="    ">Sep: Tab</option>
-                <option value="|">Sep: |</option>
-            </select>
-
             <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
                 <i class="fas fa-download"></i> CSV
             </button>
@@ -385,9 +375,9 @@
         <div id="settings-panel">
             <!-- Separator Setting -->
             <div style="display:flex; align-items:center; justify-content: space-between;">
-                <label for="separator-select" style="color: var(--text-main); font-size: 0.9rem;">CSV Separator:</label>
-                <!-- This select duplicates the one in action bar but for settings view completeness/fallback -->
-                <select id="setting-separator" class="separator-select" style="padding: 5px;" onchange="document.getElementById('separator-select').value = this.value">
+                <label for="setting-separator" style="color: var(--text-main); font-size: 0.9rem;">CSV Separator:</label>
+                <!-- This is now the ONLY place to select separator -->
+                <select id="setting-separator" class="separator-select" style="padding: 5px;">
                     <option value=";" selected>Semicolon (;)</option>
                     <option value=",">Comma (,)</option>
                     <option value="    ">Tab</option>
@@ -644,10 +634,6 @@
                 autoTranslate(entry.word);
             }
             
-            // Enable translate button for new search
-            const transBtn = document.getElementById('trans-btn');
-            if (transBtn) transBtn.disabled = false;
-            
             actionBar.style.display = 'flex';
 
         } catch (error) {
@@ -727,7 +713,7 @@
 
         loader.innerText = "Translating formatting...";
         loader.style.display = 'block';
-        transBtn.disabled = true;
+        if(transBtn) transBtn.disabled = true;
 
         try {
             const response = await fetch(`${API_BASE}/translate`, {
@@ -773,7 +759,7 @@
             showError("Translation failed: " + error.message);
         } finally {
             loader.style.display = 'none';
-            if (!success) {
+            if (!success && transBtn) {
                 transBtn.disabled = false;
             }
         }
@@ -793,6 +779,13 @@
             </div>
             
             <div id="anki-back">
+                <!-- Translation Button at Top Right of Back Div -->
+                <div style="display:flex; justify-content: flex-end; margin-bottom: 10px;">
+                     <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="color: var(--sol-violet); border-color: var(--sol-violet); font-size: 0.8rem; padding: 4px 10px;">
+                        <i class="fas fa-language"></i> Translate Context
+                    </button>
+                </div>
+
                 <!-- Auto Translation Container -->
                 <div id="translate-div" style="display:none;"></div>
                 
@@ -883,7 +876,8 @@
     function exportToAnki() {
         const frontDiv = document.getElementById('anki-front');
         const backDiv = document.getElementById('anki-back');
-        const sepSelect = document.getElementById('separator-select');
+        // Use the setting-separator directly as the source of truth
+        const sepSelect = document.getElementById('setting-separator');
 
         if (!frontDiv || !backDiv) {
             alert("No content to export!");
