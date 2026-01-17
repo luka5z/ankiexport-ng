@@ -187,6 +187,19 @@
         .trans-slot { margin-bottom: 8px; }
         .trans-slot:last-child { margin-bottom: 0; }
 
+        .pl-phonetic {
+            display: block;
+            margin-top: 4px;
+            color: var(--sol-base01);
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+        /* Make the stress caps stand out */
+        .pl-phonetic b {
+            color: var(--sol-magenta);
+            font-weight: 900;
+        }
+
         /* 3. DEFINITIONS (Green) */
         #definitions-content {
             background-color: rgba(133, 153, 0, 0.08); /* Green tint */
@@ -764,7 +777,16 @@
             const data = await response.json();
             
             if (data.translation) {
-                googleSlot.innerHTML = `<span class="pl-label">TRANSLATE</span> ${data.translation}`;
+                let html = `<span class="pl-label">TRANSLATE</span> ${data.translation}`;
+                
+                // NEW: Render Phonetic Helper if available
+                if (data.phonetic_pl) {
+                    // Logic to bold the Capital Letters for visual emphasis
+                    const formattedPhonetic = data.phonetic_pl.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
+                    html += `<span class="pl-phonetic">Wymowa: [${formattedPhonetic}]</span>`;
+                }
+
+                googleSlot.innerHTML = html;
                 // Ensure parent container is visible and styled
                 parentDiv.classList.add('pl-translation'); 
                 parentDiv.style.display = 'block';
@@ -904,6 +926,12 @@
             </div>
             
             <div id="anki-back">
+                <!-- Auto Translation Container with Slots -->
+                <div id="translate-div" style="display:none; margin-bottom: 20px;">
+                    <div id="google-slot" class="trans-slot"></div>
+                    <div id="diki-slot" class="trans-slot"></div>
+                </div>
+                
                 <!-- Action Buttons: Translate Context & Edit -->
                 <div style="display:flex; gap: 10px; margin-bottom: 15px;">
                      <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="flex:1; color: var(--sol-violet); border-color: var(--sol-violet);">
@@ -912,12 +940,6 @@
                      <button id="edit-btn" onclick="toggleEditMode()" class="settings-toggle-btn" style="flex:1; color: var(--sol-yellow); border-color: var(--sol-yellow);">
                         <i class="fas fa-pen"></i> Edit
                     </button>
-                </div>
-
-                <!-- Auto Translation Container with Slots -->
-                <div id="translate-div" style="display:none; margin-bottom: 20px;">
-                    <div id="google-slot" class="trans-slot"></div>
-                    <div id="diki-slot" class="trans-slot"></div>
                 </div>
                 
                 <!-- Definitions Container -->
