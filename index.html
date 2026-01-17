@@ -184,6 +184,16 @@
         .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
         .diki-label { color: var(--sol-cyan); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
         
+        /* NEW: Phonetic Label (Orange) */
+        .phonetic-label { 
+            color: var(--sol-orange); 
+            font-weight: bold; 
+            margin-right: 8px; 
+            font-size: 0.8rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+
         .trans-slot { margin-bottom: 8px; }
         .trans-slot:last-child { margin-bottom: 0; }
 
@@ -783,7 +793,7 @@
                 if (data.phonetic_pl) {
                     // Logic to bold the Capital Letters for visual emphasis
                     const formattedPhonetic = data.phonetic_pl.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
-                    html += `<span class="pl-phonetic">Wymowa: [${formattedPhonetic}]</span>`;
+                    html += `<span class="pl-phonetic"><span class="phonetic-label">PHONETIC</span> [${formattedPhonetic}]</span>`;
                 }
 
                 googleSlot.innerHTML = html;
@@ -1053,7 +1063,7 @@
         
         // Cleanup for CSV: 
         backHtml = backHtml.replace(/\n/g, '').trim();
-        backHtml = backHtml.replace(/<span class="(pl-label|diki-label)">.*?<\/span>/g, '');
+        backHtml = backHtml.replace(/<span class="(pl-label|diki-label|phonetic-label)">.*?<\/span>/g, '');
 
         const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
         
