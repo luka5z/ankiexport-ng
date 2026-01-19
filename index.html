@@ -4,172 +4,798 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polyglot</title>
+    <!-- Link the Manifest for Android Integration -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#268bd2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* --- SOLARIZED PALETTE & THEME VARIABLES --- */
         :root {
-            --sol-base3: #fdf6e3; --sol-base2: #eee8d5; --sol-base1: #93a1a1;
-            --sol-base00: #657b83; --sol-base01: #586e75; --sol-blue: #268bd2;
-            --sol-violet: #6c71c4; --sol-magenta: #d33682; --sol-green: #859900;
-            --sol-yellow: #b58900; --sol-red: #dc322f; --sol-cyan: #2aa198;
+            /* Solarized Colors */
+            --sol-base03: #002b36;
+            --sol-base02: #073642;
+            --sol-base01: #586e75;
+            --sol-base00: #657b83;
+            --sol-base0:  #839496;
+            --sol-base1:  #93a1a1;
+            --sol-base2:  #eee8d5;
+            --sol-base3:  #fdf6e3;
+            --sol-yellow: #b58900;
             --sol-orange: #cb4b16;
-            --bg: var(--sol-base3); --surface: var(--sol-base2);
-            --text-main: var(--sol-base00); --text-muted: var(--sol-base01);
-            --primary: var(--sol-blue); --border: var(--sol-base1);
+            --sol-red:    #dc322f;
+            --sol-magenta:#d33682;
+            --sol-violet: #6c71c4;
+            --sol-blue:   #268bd2;
+            --sol-cyan:   #2aa198;
+            --sol-green:  #859900;
+
+            /* Default (Light) Theme Mappings */
+            --bg: var(--sol-base3);
+            --surface: var(--sol-base2);
+            --text-main: var(--sol-base00);
+            --text-muted: var(--sol-base01); 
+            --primary: var(--sol-blue);
+            --secondary: var(--sol-green);
+            --warning: var(--sol-yellow);
+            --border: var(--sol-base1);
+            --shadow: rgba(0, 0, 0, 0.05);
+            --input-bg: #ffffff;
+            
             --radius: 8px;
         }
+
+        /* Dark Theme Overrides */
         [data-theme="dark"] {
-            --bg: #002b36; --surface: #073642; --text-main: #839496; --text-muted: #93a1a1; --input-bg: #002b36;
+            --bg: var(--sol-base03);
+            --surface: var(--sol-base02);
+            --text-main: var(--sol-base0);
+            --text-muted: var(--sol-base1);
+            --primary: var(--sol-blue);
+            --border: var(--sol-base01);
+            --shadow: rgba(0, 0, 0, 0.3);
+            --input-bg: var(--sol-base03);
         }
+
         * { box-sizing: border-box; }
-        body { font-family: "Public Sans", sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 1rem; display: flex; justify-content: center; min-height: 100vh; }
-        .container { background: var(--surface); width: 100%; max-width: 600px; padding: 1.5rem; border-radius: var(--radius); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .header-row { display: flex; justify-content: space-between; margin-bottom: 1.5rem; align-items: center; }
-        h1 { margin: 0; color: var(--primary); }
-        .theme-toggle { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
+
+        body {
+            font-family: "Public Sans", Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Centered vertically for login */
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            background: var(--surface);
+            width: 100%;
+            max-width: 600px;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px var(--shadow);
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Header & Toggle */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.75rem; }
+
+        .theme-toggle {
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.2rem; cursor: pointer; padding: 8px;
+            border-radius: 50%; transition: color 0.2s, background 0.2s;
+        }
+        .theme-toggle:hover { color: var(--primary); background-color: rgba(0,0,0,0.05); }
+
+        /* Search Section */
         .search-box { display: flex; gap: 10px; margin-bottom: 1rem; }
-        input { flex: 1; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 16px; }
-        button.action-btn { padding: 12px; border: none; border-radius: var(--radius); background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
+
+        input {
+            flex: 1; padding: 14px; font-size: 16px; 
+            border: 1px solid var(--border); border-radius: var(--radius);
+            background-color: var(--input-bg); color: var(--text-main);
+            -webkit-appearance: none; transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--primary); }
+
+        button.action-btn {
+            padding: 12px 20px; color: white; border: none;
+            border-radius: var(--radius); cursor: pointer; font-weight: 600;
+            font-size: 1rem; transition: opacity 0.2s;
+            touch-action: manipulation;
+        }
+        button.action-btn:hover { opacity: 0.9; }
+        button.action-btn:active { transform: scale(0.98); }
+        button.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        #search-btn { background-color: var(--primary); min-width: 60px;}
+
+        /* Login Button specific */
+        .btn-login { background-color: var(--primary); width: 100%; margin-top: 10px; }
+
+        /* Actions Bar */
+        .action-bar { display: none; gap: 10px; margin-bottom: 1.5rem; align-items: stretch; flex-wrap: wrap;}
         
-        #result-container { margin-top: 1rem; }
-        /* Anki Card Styles */
-        #anki-front { background: rgba(38,139,210,0.1); border-left: 4px solid var(--sol-blue); padding: 15px; border-radius: 4px; margin-bottom: 15px; font-family: "Souvenir Std", Georgia, serif; }
-        #translate-div { background: rgba(108,113,196,0.1); border-left: 4px solid var(--sol-violet); padding: 15px; border-radius: 4px; margin-bottom: 15px; display: none; font-family: "Souvenir Std", Georgia, serif; }
-        #definitions-content { background: rgba(133,153,0,0.1); border-left: 4px solid var(--sol-green); padding: 15px; border-radius: 4px; font-family: "Souvenir Std", Georgia, serif; }
+        .btn-edit { background-color: var(--warning); flex: 1; color: #fff; }
+        .btn-save { background-color: var(--secondary); flex: 1; color: #fff; }
+        .btn-export { background-color: var(--text-muted); flex: 2; color: #fff; }
+
+        /* Separator Select Styling */
+        .separator-select {
+            padding: 0 10px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+            min-width: 80px;
+            /* removed flex:1 to fit better in settings */
+        }
+
+        /* Results Section */
+        #result-container {
+            padding: 0.5rem;
+            border: 2px solid transparent;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            overflow-wrap: break-word; 
+        }
         
-        .word-title { font-size: 1.8rem; font-weight: bold; }
-        .phonetic { font-family: monospace; color: var(--text-muted); font-size: 1.1rem; }
-        .pl-label { color: var(--sol-violet); font-weight: bold; font-size: 0.8rem; margin-right: 5px; }
-        .diki-label { color: var(--sol-cyan); font-weight: bold; font-size: 0.8rem; margin-right: 5px; }
-        .phonetic-label { color: var(--sol-orange); font-weight: bold; font-size: 0.8rem; margin-right: 5px; }
-        .part-of-speech { font-style: italic; font-weight: bold; background: var(--text-muted); color: var(--surface); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
-        .pos-inline { font-style: italic; color: var(--sol-base01); font-size: 0.9rem; }
+        /* Font for Anki Cards Content */
+        #anki-front, #translate-div, #definitions-content {
+            font-family: "Souvenir Std", Georgia, serif;
+        }
+
+        /* --- Distinct Background Styles --- */
         
+        /* 1. FRONT (Blue) */
+        #anki-front {
+            background-color: rgba(38, 139, 210, 0.08); /* Blue tint */
+            border-left: 4px solid var(--sol-blue);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        /* 2. TRANSLATION (Violet) */
+        .pl-translation {
+            background-color: rgba(108, 113, 196, 0.1); /* Violet tint */
+            border-left: 4px solid var(--sol-violet);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+        }
+        .pl-label { color: var(--sol-violet); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+        .diki-label { color: var(--sol-cyan); font-weight: bold; margin-right: 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;}
+        
+        /* NEW: Phonetic Label (Orange) */
+        .phonetic-label { 
+            color: var(--sol-orange); 
+            font-weight: bold; 
+            margin-right: 8px; 
+            font-size: 0.8rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+
+        .trans-slot { margin-bottom: 8px; }
+        .trans-slot:last-child { margin-bottom: 0; }
+
+        .pl-phonetic {
+            display: block;
+            margin-top: 4px;
+            color: var(--sol-base01);
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+        /* Make the stress caps stand out */
         .pl-phonetic-text b { color: var(--sol-magenta); font-weight: 900; }
         .pl-phonetic-text { font-family: monospace; }
+
+
+        /* 3. DEFINITIONS (Green) */
+        #definitions-content {
+            background-color: rgba(133, 153, 0, 0.08); /* Green tint */
+            border-left: 4px solid var(--sol-green);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .editing-mode {
+            background-color: rgba(181, 137, 0, 0.1) !important; 
+            border-left-color: var(--sol-yellow) !important;
+            border-color: var(--warning) !important;
+            outline: none;
+            /* padding: 1rem; already has padding */
+        }
+
+        .loader { text-align: center; color: var(--text-muted); display: none; margin-top: 2rem;}
+        .error { text-align: center; color: var(--sol-red); margin-top: 20px; }
+
+        /* Error Banner Styling */
+        .error-banner {
+            background-color: var(--sol-red);
+            color: #fff;
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 2000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            align-items: center;
+            justify-content: center;
+        }
         
-        ul { margin: 5px 0 0 1.2rem; }
-        li { margin-bottom: 8px; }
-        .view-hidden { display: none; }
-        .loader { text-align: center; margin-top: 2rem; color: var(--text-muted); display: none; }
-        .action-bar { display: none; gap: 10px; margin-bottom: 1rem; }
-        .btn-export { flex: 1; background: var(--text-muted); }
+        .modal-content {
+            background-color: var(--surface);
+            margin: auto;
+            padding: 20px;
+            border: 1px solid var(--border);
+            width: 90%;
+            max-width: 400px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            position: relative;
+            animation: fadeIn 0.2s;
+            color: var(--text-main);
+        }
+
+        .close-modal-btn {
+            color: var(--text-muted);
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 20px;
+        }
+
+        .close-modal-btn:hover {
+            color: var(--sol-red);
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(-10px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+
+        /* Definitions Styling */
+        .word-title { font-size: 1.8rem; font-weight: bold; margin: 0; }
+        .phonetic { color: var(--text-muted); font-family: monospace; font-size:1.1rem; }
+        .part-of-speech {
+            font-weight: bold; font-style: italic; color: var(--surface); 
+            background: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem;
+        }
+        .pos-inline { font-style: italic; color: var(--sol-base01); font-size: 0.9rem; }
+
+        ul { margin: 0; padding-left: 1.2rem; margin-top: 10px; }
+        li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
+        .example { color: var(--text-muted); font-size: 0.9em; font-style: italic; display: block; margin-top: 4px;}
+
+        /* Settings Panel Styling */
+        .settings-toggle-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-muted);
+            border-radius: var(--radius); padding: 6px 12px; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.2s;
+        }
+        .settings-toggle-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .settings-toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #settings-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: rgba(0,0,0,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            display: none;
+        }
+        #settings-panel input[type="number"] {
+            flex: initial; /* Override global flex:1 */
+            width: 70px;
+            padding: 8px;
+            margin-left: 10px;
+        }
+        
+        /* Toggle Switch Styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+            flex: initial;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--text-muted);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Hide Views Logic */
+        .view-hidden { display: none !important; }
+
+        /* Mobile Styles */
+        @media (max-width: 480px) {
+            body { padding: 0; align-items: flex-start; }
+            .container { box-shadow: none; border-radius: 0; padding: 1rem; max-width: 100%; min-height: 100vh;}
+            .action-bar { flex-direction: column; gap: 12px; }
+            button.action-btn, .separator-select { width: 100%; padding: 14px; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN -->
+    <!-- LOGIN VIEW -->
     <div id="login-view" class="container">
         <div class="header-row">
-            <h1>Login</h1>
-            <button class="theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon"></i></button>
+            <h1><i class="fas fa-lock"></i> Login</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" id="login-theme-btn">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
-        <input type="password" id="token-input" placeholder="API Token..." onkeydown="if(event.key==='Enter') login()">
-        <button onclick="login()" class="action-btn" style="width:100%; margin-top:10px;">Unlock</button>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Please enter your API Token to access the dictionary.</p>
+        <input type="password" id="token-input" placeholder="Paste your Access Token..." onkeydown="if(event.key==='Enter') login()">
+        <button onclick="login()" class="action-btn btn-login">Unlock Dictionary</button>
     </div>
 
-    <!-- APP -->
+    <!-- MAIN APP VIEW -->
     <div id="app-view" class="container view-hidden">
+        <!-- Error Banner placed at the top of content -->
+        <div id="error-banner" class="error-banner"></div>
+
         <div class="header-row">
-            <h1>Polyglot</h1>
-            <button class="theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon"></i></button>
+            <h1><i class="fas fa-book-open"></i> Polyglot</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" id="app-theme-btn">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
         
         <div class="search-box">
-            <input type="text" id="word-input" placeholder="Word..." onkeydown="if(event.key==='Enter') searchWord()">
-            <button onclick="searchWord()" class="action-btn"><i class="fas fa-search"></i></button>
+            <input type="text" id="word-input" placeholder="Enter a word..." autocomplete="off" onkeydown="if(event.key==='Enter') searchWord()">
+            <button onclick="searchWord()" id="search-btn" class="action-btn"><i class="fas fa-search"></i></button>
         </div>
 
         <div class="action-bar" id="action-bar">
-            <button class="action-btn btn-export" onclick="exportToAnki()">Download CSV</button>
+            <!-- Edit Button removed from here, now inside Back card -->
+            
+            <button id="export-btn" class="action-btn btn-export" onclick="exportToAnki()">
+                <i class="fas fa-download"></i> CSV
+            </button>
         </div>
 
-        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+        <div id="loader" class="loader"><i class="fas fa-spinner fa-spin"></i> Processing...</div>
         <div id="result-container"></div>
-        
-        <div style="margin-top:20px; text-align:right;">
-             <button onclick="logout()" style="background:none; border:none; color:var(--sol-red); cursor:pointer;">Logout</button>
+        <!-- Stats Bar -->
+        <div id="stats-bar" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-height: 1.2em;"></div>
+
+        <!-- Footer Section: Logout & Settings -->
+        <div style="display:flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 20px;">
+            <button onclick="logout()" class="settings-toggle-btn" style="color: var(--sol-red); border-color: var(--sol-red);">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+            <button class="settings-toggle-btn" onclick="toggleSettings()">
+                <i class="fas fa-cog"></i> Settings
+            </button>
+        </div>
+
+        <div id="settings-panel">
+            <!-- Separator Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between;">
+                <label for="setting-separator" style="color: var(--text-main); font-size: 0.9rem;">CSV Separator:</label>
+                <!-- This is now the ONLY place to select separator -->
+                <select id="setting-separator" class="separator-select" style="padding: 5px;">
+                    <option value=";" selected>Semicolon (;)</option>
+                    <option value=",">Comma (,)</option>
+                    <option value="    ">Tab</option>
+                    <option value="|">Pipe (|)</option>
+                </select>
+            </div>
+
+            <!-- Max Meanings (Groups) Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
+                <label for="max-meanings" style="color: var(--text-main); font-size: 0.9rem;">Max Part-of-Speech Groups:</label>
+                <input type="number" id="max-meanings" value="3" min="1" max="10" onchange="updateSettings()">
+            </div>
+
+            <!-- Max Definitions per Group Setting -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 10px;">
+                <label for="max-defs" style="color: var(--text-main); font-size: 0.9rem;">Max Definitions per Group:</label>
+                <input type="number" id="max-defs" value="3" min="1" max="20" onchange="updateSettings()">
+            </div>
+            
+            <!-- Auto Translate Setting (Toggle Switch) -->
+            <div style="display:flex; align-items:center; justify-content: space-between; margin-top: 15px;">
+                <label for="auto-translate" style="color: var(--text-main); font-size: 0.9rem; cursor: pointer;">Auto-Translate Headword:</label>
+                <label class="switch">
+                    <input type="checkbox" id="auto-translate" checked onchange="updateSettings()">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal-btn" onclick="closeModal()">&times;</span>
+            <div id="modal-message"></div>
         </div>
     </div>
 
 <script>
-    const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; // Terraform Output
+    // --- CONFIGURATION ---
+    // REPLACE THIS with your Terraform Output URL
+    const API_BASE = "https://iuy3bnzf16.execute-api.us-east-1.amazonaws.com"; 
     const TOKEN_KEY = "polyglot_api_token";
+    const SETTINGS_KEY = "polyglot_max_meanings";
+    const SETTINGS_KEY_DEFS = "polyglot_max_defs";
+    const AUTO_TRANS_KEY = "polyglot_auto_translate";
 
+    let isEditing = false;
+    let currentEntry = null; // Store data to allow re-rendering when settings change
+    let maxMeanings = 3;
+    let maxDefs = 3;
+    let autoTranslateEnabled = true;
+
+    // --- AUTHENTICATION LOGIC ---
     function initAuth() {
-        if(localStorage.getItem(TOKEN_KEY)) {
-            document.getElementById('login-view').classList.add('view-hidden');
-            document.getElementById('app-view').classList.remove('view-hidden');
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+            showApp();
+        } else {
+            showLogin();
         }
     }
+
     function login() {
-        const t = document.getElementById('token-input').value.trim();
-        if(t) { localStorage.setItem(TOKEN_KEY, t); initAuth(); }
+        const input = document.getElementById('token-input');
+        const token = input.value.trim();
+        if (token) {
+            localStorage.setItem(TOKEN_KEY, token);
+            showApp();
+        }
     }
+
     function logout() {
         localStorage.removeItem(TOKEN_KEY);
-        location.reload();
-    }
-    function toggleTheme() {
-        const h = document.documentElement;
-        h.setAttribute('data-theme', h.getAttribute('data-theme')==='light'?'dark':'light');
-    }
-
-    async function searchWord() {
-        const word = document.getElementById('word-input').value.trim();
-        if(!word) return;
-
-        // Reset UI
+        document.getElementById('word-input').value = '';
         document.getElementById('result-container').innerHTML = '';
+        document.getElementById('stats-bar').innerHTML = '';
         document.getElementById('action-bar').style.display = 'none';
-        document.getElementById('loader').style.display = 'block';
+        currentEntry = null;
+        closeModal(); // Clear any existing errors on logout
+        showLogin();
+    }
 
-        // Render Initial Skeleton
-        renderEntry({ word: word });
+    function showApp() {
+        document.getElementById('login-view').classList.add('view-hidden');
+        document.getElementById('app-view').classList.remove('view-hidden');
+    }
 
-        // 1. Call Dictionary (Definitions)
+    function showLogin() {
+        document.getElementById('app-view').classList.add('view-hidden');
+        document.getElementById('login-view').classList.remove('view-hidden');
+    }
+
+    // --- SETTINGS LOGIC ---
+    function initSettings() {
+        // Load Max Meanings (Groups)
+        const savedMeanings = localStorage.getItem(SETTINGS_KEY);
+        if (savedMeanings) {
+            maxMeanings = parseInt(savedMeanings, 10);
+        }
+        document.getElementById('max-meanings').value = maxMeanings;
+
+        // Load Max Definitions
+        const savedDefs = localStorage.getItem(SETTINGS_KEY_DEFS);
+        if (savedDefs) {
+            maxDefs = parseInt(savedDefs, 10);
+        }
+        document.getElementById('max-defs').value = maxDefs;
+
+        // Load Auto Translate
+        const savedAuto = localStorage.getItem(AUTO_TRANS_KEY);
+        if (savedAuto !== null) {
+            autoTranslateEnabled = (savedAuto === 'true');
+        }
+        document.getElementById('auto-translate').checked = autoTranslateEnabled;
+    }
+
+    function toggleSettings() {
+        const panel = document.getElementById('settings-panel');
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateSettings() {
+        // Update Max Meanings (Groups)
+        const inputMeanings = document.getElementById('max-meanings');
+        const valMeanings = parseInt(inputMeanings.value, 10);
+        if (valMeanings > 0) {
+            maxMeanings = valMeanings;
+            localStorage.setItem(SETTINGS_KEY, maxMeanings);
+        }
+
+        // Update Max Definitions
+        const inputDefs = document.getElementById('max-defs');
+        const valDefs = parseInt(inputDefs.value, 10);
+        if (valDefs > 0) {
+            maxDefs = valDefs;
+            localStorage.setItem(SETTINGS_KEY_DEFS, maxDefs);
+        }
+
+        // Update Auto Translate
+        const inputAuto = document.getElementById('auto-translate');
+        autoTranslateEnabled = inputAuto.checked;
+        localStorage.setItem(AUTO_TRANS_KEY, autoTranslateEnabled);
+
+        // Re-render if we have data
+        if (currentEntry) {
+            renderResult(currentEntry);
+            updateStats();
+            if (autoTranslateEnabled) {
+                const transDiv = document.getElementById('translate-div');
+                // If it was hidden, re-fetch translation
+                if (transDiv && transDiv.style.display === 'none') {
+                     // Just call autoTranslate, which now handles everything
+                     autoTranslate(currentEntry.word);
+                }
+            }
+        }
+    }
+
+    // --- UI HELPERS ---
+    function showModalError(msg) {
+        const modal = document.getElementById('error-modal');
+        const msgDiv = document.getElementById('modal-message');
+        if(modal && msgDiv) {
+            msgDiv.innerHTML = msg;
+            modal.style.display = 'flex'; // Use flex for centering
+        }
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('error-modal');
+        if(modal) modal.style.display = 'none';
+    }
+
+    // Close on click outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('error-modal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    // --- THEME MANAGEMENT ---
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        const buttons = [document.getElementById('login-theme-btn'), document.getElementById('app-theme-btn')];
+        const isDark = (savedTheme === 'dark' || (!savedTheme && systemPrefersDark));
+        const newTheme = isDark ? 'dark' : 'light';
+        const icon = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+
+        document.documentElement.setAttribute('data-theme', newTheme);
+        buttons.forEach(btn => { if(btn) btn.innerHTML = icon; });
+    }
+
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        
+        const icon = newTheme === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+        const buttons = [document.getElementById('login-theme-btn'), document.getElementById('app-theme-btn')];
+        buttons.forEach(btn => { if(btn) btn.innerHTML = icon; });
+    }
+
+    // --- SEARCH LOGIC ---
+    async function searchWord() {
+        const input = document.getElementById('word-input');
+        const resultContainer = document.getElementById('result-container');
+        const loader = document.getElementById('loader');
+        const actionBar = document.getElementById('action-bar');
+        const statsBar = document.getElementById('stats-bar');
+        const word = input.value.trim();
+        const token = localStorage.getItem(TOKEN_KEY);
+
+        if (!word) return;
+
+        input.blur(); 
+        resultContainer.innerHTML = '';
+        statsBar.innerHTML = '';
+        actionBar.style.display = 'none';
+        closeModal(); // Reset error state
+        currentEntry = null; // Clear cached entry
+        
+        loader.innerText = "Finding definition...";
+        loader.style.display = 'block';
+        resetEditMode(); 
+
+        // 1. Initial Render (Skeleton: Front + Translate Container with slots)
+        renderResult({ word: word }); 
+        
+        // 2. Trigger Parallel Calls: Dictionary (Definitions) + Translate (Aggregator)
+        
         const pDict = fetch(`${API_BASE}/dictionary`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'x-api-token': localStorage.getItem(TOKEN_KEY)},
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-api-token': token 
+            },
             body: JSON.stringify({ word: word })
         }).then(r => r.json());
 
-        // 2. Call Translate (Google + Rich Data)
-        const pTrans = fetch(`${API_BASE}/translate`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'x-api-token': localStorage.getItem(TOKEN_KEY)},
-            body: JSON.stringify({ word: word })
-        }).then(r => r.json());
+        // Call Translate Service (aggregates Google, Diki, Cambridge, Phonetic)
+        const pTrans = autoTranslateEnabled ? autoTranslate(word) : Promise.resolve(null);
 
         try {
-            const [dictData, transData] = await Promise.all([pDict, pTrans]);
+            // Wait for Dictionary result primarily for definitions
+            const dictResponse = await pDict;
+
+            // Handle Dictionary Errors
+            if (dictResponse.error && !dictResponse.meanings) {
+                 if (dictResponse.error === 'No word provided') {
+                    // ignore
+                 } else {
+                     // If 404 from dict, we still might show translation results if available
+                     // But usually we show error if no english defs found
+                     if(!document.getElementById('translate-div').innerHTML) {
+                         // Only show error if translation failed too
+                         // For now, let's just log it or show partial error
+                     }
+                 }
+            }
             
-            // Merge & Render
-            // Front Card: Word + IPA
-            // Use IPA from Translate service if available (it has IPA from Diki/Cambridge)
-            const finalIpa = transData.ipa || (dictData.phonetics?.[0]?.text) || '';
-            document.querySelector('.phonetic').innerText = finalIpa;
+            // If valid dictionary response
+            if (!dictResponse.error) {
+                 currentEntry = dictResponse; 
+                 
+                 // Update Phonetic on Front Card (Fallback if Translate didn't provide one)
+                 const pEl = document.querySelector('.phonetic');
+                 if(pEl && pEl.innerText === '') {
+                     const phoneticText = dictResponse.phonetic || (dictResponse.phonetics && dictResponse.phonetics.find(p => p.text)?.text) || '';
+                     pEl.innerText = phoneticText;
+                 }
+
+                 // Update Definitions Content
+                 const defsContent = document.getElementById('definitions-content');
+                 if(defsContent) {
+                     defsContent.innerHTML = generateDefinitionsHtml(dictResponse.meanings);
+                 }
+            } else {
+                 // Dictionary failed (e.g. 404). Clear definitions area.
+                 const defsContent = document.getElementById('definitions-content');
+                 if(defsContent) defsContent.innerHTML = '<em>No English definitions found.</em>';
+                 currentEntry = { word: word }; // Fallback entry
+            }
+
+            updateStats();
+            actionBar.style.display = 'flex';
+
+        } catch (error) {
+            showModalError("Network or unexpected error: " + error.message);
+        } finally {
+            loader.style.display = 'none';
+        }
+    }
+
+    // --- TRANSLATE AGGREGATOR LOGIC ---
+    async function autoTranslate(word) {
+        const transDiv = document.getElementById('translate-div');
+        const token = localStorage.getItem(TOKEN_KEY);
+        
+        try {
+            const response = await fetch(`${API_BASE}/translate`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
+                body: JSON.stringify({ word: word })
+            });
+
+            if (!response.ok) {
+                console.warn("Translation service failed", response.status);
+                return;
+            }
+
+            const data = await response.json();
             
-            // Back Card: Translation + Polish Phonetic + Web Defs
-            const transDiv = document.getElementById('translate-div');
+            // 1. Update IPA on Front Card (Priority: Translate Service > Dictionary Service)
+            // Translate Service gets IPA from Diki/Cambridge which is often better/UK
+            if (data.ipa) {
+                const pEl = document.querySelector('.phonetic');
+                if (pEl) pEl.innerText = data.ipa;
+            }
+
+            // 2. Build Translation HTML (Back Card)
             let transHtml = '';
             
-            // 1. Google Translation
-            if (transData.translation) {
-                transHtml += `<div><span class="pl-label">TRANSLATE</span> ${transData.translation}</div>`;
+            // Google Translation
+            if (data.translation) {
+                transHtml += `<div><span class="pl-label">TRANSLATE</span> ${data.translation}</div>`;
             }
-            
-            // 2. Polish Phonetic Approximation (from Phonetic Lambda)
-            if (transData.phonetic_pl) {
-                // Bold Capitalized letters for stress emphasis
-                const fmt = transData.phonetic_pl.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
-                transHtml += `<div style="margin-top:4px;"><span class="phonetic-label">PHONETIC</span> <span class="pl-phonetic-text">[${fmt}]</span></div>`;
+
+            // Polish Phonetic
+            if (data.phonetic_pl) {
+                 const fmt = data.phonetic_pl.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
+                 transHtml += `<div style="margin-top:4px;"><span class="phonetic-label">PHONETIC</span> <span class="pl-phonetic-text">[${fmt}]</span></div>`;
             }
-            
-            // 3. Web Definitions (Diki/Cambridge)
-            if (transData.meanings && transData.meanings.length > 0) {
-                const parts = transData.meanings.map(g => {
+
+            // Web Definitions (Diki/Cambridge)
+            if (data.meanings && data.meanings.length > 0) {
+                const parts = data.meanings.map(g => {
                     const defs = g.definitions.join(', ');
                     if(g.part_of_speech && g.part_of_speech !== 'unknown') {
                         return `<span class="pos-inline">${g.part_of_speech}</span>: ${defs}`;
@@ -178,66 +804,287 @@
                 });
                 transHtml += `<div style="margin-top:8px;"><span class="diki-label">WEB</span> ${parts.join('; ')}</div>`;
             }
-            
+
             if (transHtml) {
                 transDiv.innerHTML = transHtml;
+                transDiv.classList.add('pl-translation'); 
                 transDiv.style.display = 'block';
             }
-
-            // Render English Definitions
-            const defsContent = document.getElementById('definitions-content');
-            if (dictData.meanings) {
-                let html = '';
-                dictData.meanings.slice(0, 3).forEach(m => {
-                    html += `<div style="margin-bottom:10px;"><span class="part-of-speech">${m.partOfSpeech}</span><ul>`;
-                    m.definitions.slice(0, 3).forEach(d => {
-                        html += `<li>${d.definition}</li>`;
-                    });
-                    html += `</ul></div>`;
-                });
-                defsContent.innerHTML = html;
-            } else if (dictData.error) {
-                defsContent.innerHTML = `<em>${dictData.error}</em>`;
-            }
-
-            document.getElementById('action-bar').style.display = 'flex';
-
-        } catch (e) {
-            alert("Error: " + e.message);
-        } finally {
-            document.getElementById('loader').style.display = 'none';
+            
+        } catch (error) {
+            console.error("Auto-translation error:", error);
         }
     }
 
-    function renderEntry(entry) {
-        document.getElementById('result-container').innerHTML = `
+    // --- MANUAL TRANSLATE LOGIC (CONTEXT) ---
+    async function translateWord() {
+        const defsContent = document.getElementById('definitions-content');
+        if (!defsContent) return;
+
+        if (defsContent.classList.contains('pl-translation')) {
+            return;
+        }
+
+        const frontDiv = document.getElementById('anki-front');
+        const wordTitle = frontDiv.querySelector('.word-title')?.innerText || "";
+        
+        const contentToTranslate = `<div class="word-title">${wordTitle}</div><br>${defsContent.innerHTML}`;
+
+        const token = localStorage.getItem(TOKEN_KEY);
+        const loader = document.getElementById('loader');
+        const transBtn = document.getElementById('trans-btn');
+        
+        closeModal(); 
+        let success = false;
+
+        loader.innerText = "Translating formatting...";
+        loader.style.display = 'block';
+        if(transBtn) transBtn.disabled = true;
+
+        try {
+            const response = await fetch(`${API_BASE}/translate`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-token': token 
+                },
+                body: JSON.stringify({ word: contentToTranslate })
+            });
+
+            if (response.status === 403) {
+                alert("Session expired.");
+                logout(); return;
+            }
+
+            if (!response.ok) {
+                let errorMessage = `Translation Error: ${response.status}`;
+                try {
+                    const data = await response.json();
+                    if (data.error) errorMessage = data.error;
+                } catch (e) {}
+                showModalError(errorMessage);
+                return;
+            }
+
+            const data = await response.json();
+            
+            if (data.translation) {
+                defsContent.innerHTML = data.translation;
+                defsContent.classList.add('pl-translation'); 
+                // Override border/bg for context section
+                defsContent.style.backgroundColor = "rgba(108, 113, 196, 0.1)";
+                defsContent.style.borderLeftColor = "var(--sol-violet)";
+                
+                success = true;
+                updateStats();
+            }
+
+        } catch (error) {
+            showModalError("Translation failed: " + error.message);
+        } finally {
+            loader.style.display = 'none';
+            if (!success && transBtn) {
+                transBtn.disabled = false;
+            }
+        }
+    }
+
+    function renderResult(entry) {
+        const container = document.getElementById('result-container');
+        const phoneticText = entry.phonetic || (entry.phonetics && entry.phonetics.find(p => p.text)?.text) || '';
+
+        let html = `
             <div id="anki-front">
-                <div style="display:flex; justify-content:space-between;">
-                    <span class="word-title">${entry.word}</span>
-                    <span class="phonetic"></span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="word-title">${entry.word}</span> 
+                    <span class="phonetic">${phoneticText}</span>
                 </div>
             </div>
+            
             <div id="anki-back">
-                <div id="translate-div"></div>
-                <div id="definitions-content"></div>
-            </div>
+                <!-- Auto Translation Container with Slots -->
+                <div id="translate-div" style="display:none; margin-bottom: 20px;"></div>
+                
+                <!-- Action Buttons: Translate Context & Edit -->
+                <div style="display:flex; gap: 10px; margin-bottom: 15px;">
+                     <button id="trans-btn" onclick="translateWord()" class="settings-toggle-btn" style="flex:1; color: var(--sol-violet); border-color: var(--sol-violet);">
+                        <i class="fas fa-language"></i> Translate Context
+                    </button>
+                     <button id="edit-btn" onclick="toggleEditMode()" class="settings-toggle-btn" style="flex:1; color: var(--sol-yellow); border-color: var(--sol-yellow);">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
+                </div>
+                
+                <!-- Definitions Container -->
+                <div id="definitions-content">
         `;
+
+        if (entry.meanings) {
+            html += generateDefinitionsHtml(entry.meanings);
+        }
+
+        html += `</div></div>`; // Close definitions-content and anki-back
+        container.innerHTML = html;
+        
+        document.getElementById('result-container').addEventListener('input', updateStats);
+    }
+
+    function generateDefinitionsHtml(meanings) {
+        if (!meanings) return '';
+        let html = '';
+        
+        const meaningsToShow = meanings.slice(0, maxMeanings);
+
+        meaningsToShow.forEach(meaning => {
+            const defsToShow = meaning.definitions.slice(0, maxDefs);
+
+            html += `
+                <div class="meaning-group" style="margin-bottom: 1.5rem;">
+                    <span class="part-of-speech">${meaning.partOfSpeech}</span>
+                    <ul>
+                        ${defsToShow.map(def => `
+                            <li>
+                                ${def.definition}
+                                ${def.example ? `<br><span class="example">"${def.example}"</span>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div><br>
+            `;
+        });
+        return html;
+    }
+
+    function updateStats() {
+        const frontDiv = document.getElementById('anki-front');
+        const backDiv = document.getElementById('anki-back');
+        const statsDiv = document.getElementById('stats-bar');
+        
+        if (!frontDiv || !backDiv || !statsDiv) {
+            if(statsDiv) statsDiv.innerHTML = '';
+            return;
+        }
+
+        const frontLen = frontDiv.innerHTML.length;
+        const backLen = backDiv.innerHTML.length;
+        const total = frontLen + backLen;
+
+        statsDiv.innerHTML = `Chars (HTML): Front: <b>${frontLen}</b> | Back: <b>${backLen}</b> | Total: <b>${total}</b>`;
+    }
+
+    // --- EDITING & EXPORT LOGIC ---
+    function toggleEditMode() {
+        const container = document.getElementById('definitions-content');
+        const btn = document.getElementById('edit-btn');
+        isEditing = !isEditing;
+
+        if (isEditing) {
+            container.contentEditable = "true";
+            container.classList.add('editing-mode');
+            container.focus();
+            btn.innerHTML = '<i class="fas fa-save"></i> Save';
+        } else {
+            container.contentEditable = "false";
+            container.classList.remove('editing-mode');
+            btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+        }
+    }
+
+    function resetEditMode() {
+        isEditing = false;
+        const container = document.getElementById('definitions-content');
+        const btn = document.getElementById('edit-btn');
+        if(container) {
+            container.contentEditable = "false";
+            container.classList.remove('editing-mode');
+        }
+        if(btn) {
+            btn.innerHTML = '<i class="fas fa-pen"></i> Edit';
+        }
     }
 
     function exportToAnki() {
-        const front = document.getElementById('anki-front').innerHTML.replace(/\n/g, '').trim();
-        const back = document.getElementById('anki-back').innerHTML.replace(/\n/g, '').trim();
-        const csv = `"${front.replace(/"/g, '""')}","${back.replace(/"/g, '""')}"`;
+        const frontDiv = document.getElementById('anki-front');
+        const transDiv = document.getElementById('translate-div');
+        const defsDiv = document.getElementById('definitions-content');
         
-        const blob = new Blob([csv], {type: 'text/csv'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'card.csv';
-        a.click();
+        const sepSelect = document.getElementById('setting-separator');
+
+        if (!frontDiv || !defsDiv) {
+            alert("No content to export!");
+            return;
+        }
+
+        const separator = sepSelect.value;
+        const frontHtml = frontDiv.innerHTML.replace(/<hr[^>]*>/g, '').replace(/\n/g, '').trim();
+        
+        let backHtml = "";
+        if (transDiv && transDiv.style.display !== 'none') {
+            backHtml += transDiv.outerHTML;
+        }
+        backHtml += defsDiv.outerHTML;
+        
+        // Cleanup for CSV: 
+        backHtml = backHtml.replace(/\n/g, '').trim();
+        backHtml = backHtml.replace(/<span class="(pl-label|diki-label|phonetic-label)">.*?<\/span>/g, '');
+
+        const csvContent = `"${escapeCsv(frontHtml)}"${separator}"${escapeCsv(backHtml)}"`;
+        
+        const wordText = frontDiv.querySelector('.word-title')?.innerText || 'export';
+        downloadFile(csvContent, `${wordText}_anki.csv`);
     }
 
+    function escapeCsv(text) {
+        if (!text) return "";
+        return text.replace(/"/g, '""');
+    }
+
+    function downloadFile(content, fileName) {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- INITIALIZATION ---
+    initTheme();
+    initSettings(); // Load Settings
     initAuth();
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const wordParam = urlParams.get('w');
+        
+        if (wordParam) {
+            const input = document.getElementById('word-input');
+            input.value = wordParam;
+            if (localStorage.getItem(TOKEN_KEY)) {
+                searchWord();
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+
+        const actionParam = urlParams.get('action');
+        if (actionParam === 'new_search') {
+            const input = document.getElementById('word-input');
+            input.value = '';
+            document.getElementById('result-container').innerHTML = '';
+            document.getElementById('stats-bar').innerHTML = '';
+            document.getElementById('action-bar').style.display = 'none';
+            currentEntry = null;
+            setTimeout(() => input.focus(), 100);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
 </script>
+
 </body>
 </html>
 
