@@ -298,6 +298,9 @@
             font-weight: bold; font-style: italic; color: var(--surface); 
             background: var(--text-muted); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem;
         }
+        .pos-inline {
+            font-style: italic; color: var(--sol-base01); font-size: 0.9rem;
+        }
 
         ul { margin: 0; padding-left: 1.2rem; margin-top: 10px; }
         li { margin-bottom: 10px; line-height: 1.6; color: var(--text-main); }
@@ -691,8 +694,10 @@
         
         // 2. Trigger Parallel Translations (if enabled)
         if (autoTranslateEnabled) {
-            autoTranslate(word);           // Google Translate
-            fetchDikiTranslations(word);   // Diki Web Scraper
+            autoTranslate(word);           // Google Translate + Merged Diki
+            // We still call fetchDikiTranslations as a fallback or for consistency, 
+            // but autoTranslate might fill both now.
+            fetchDikiTranslations(word);   
         }
 
         try {
@@ -760,23 +765,27 @@
         }
     }
 
-    // --- AUTO TRANSLATE LOGIC (Google) ---
+    // --- AUTO TRANSLATE LOGIC (Google + Merged Diki) ---
     async function autoTranslate(word) {
         // Target specific slot to avoid race conditions
         const googleSlot = document.getElementById('google-slot');
+        const dikiSlot = document.getElementById('diki-slot');
         const parentDiv = document.getElementById('translate-div');
+        
         if (!googleSlot) return;
         
         const token = localStorage.getItem(TOKEN_KEY);
 
         try {
+            // This calls translate.py which now returns:
+            // { translation: "...", phonetic: "...", meanings: [...] }
             const response = await fetch(`${API_BASE}/translate`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'x-api-token': token 
                 },
-                body: JSON.stringify({ word: word }) // Just translating the headword
+                body: JSON.stringify({ word: word }) 
             });
 
             if (!response.ok) {
@@ -786,34 +795,53 @@
 
             const data = await response.json();
             
+            // 1. Display Google Translation
             if (data.translation) {
                 let html = `<span class="pl-label">TRANSLATE</span> ${data.translation}`;
                 
-                // NEW: Render Phonetic Helper if available
-                if (data.phonetic_pl) {
-                    // Logic to bold the Capital Letters for visual emphasis
-                    const formattedPhonetic = data.phonetic_pl.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
-                    html += `<span class="pl-phonetic"><span class="phonetic-label">PHONETIC</span> [${formattedPhonetic}]</span>`;
+                // Phonetic handling (support both old 'phonetic_pl' and new 'phonetic' keys)
+                const phonetic = data.phonetic || data.phonetic_pl;
+                if (phonetic) {
+                    // Bold capital letters for visual emphasis (if any), or just display IPA
+                    const formattedPhonetic = phonetic.replace(/([A-ZĄĆĘŁŃÓŚŹŻ]+)/g, '<b>$1</b>');
+                    html += `<span class="pl-phonetic"><span class="phonetic-label">IPA</span> [${formattedPhonetic}]</span>`;
                 }
 
                 googleSlot.innerHTML = html;
+                
                 // Ensure parent container is visible and styled
-                parentDiv.classList.add('pl-translation'); 
-                parentDiv.style.display = 'block';
-                updateStats(); 
+                if (parentDiv) {
+                    parentDiv.classList.add('pl-translation'); 
+                    parentDiv.style.display = 'block';
+                }
             }
+
+            // 2. Optimistic Diki Display (if translate.py returned meanings)
+            // If translate.py already fetched Diki meanings, display them immediately
+            if (data.meanings && data.meanings.length > 0 && dikiSlot && dikiSlot.innerHTML === '') {
+                 // Format: <i>adj</i>: definition, def2
+                 const webHtml = formatDikiMeanings(data.meanings);
+                 if (webHtml) {
+                     dikiSlot.innerHTML = `<span class="diki-label">WEB</span> ${webHtml}`;
+                 }
+            }
+            
+            updateStats();
 
         } catch (error) {
             console.error("Auto-translation error:", error);
         }
     }
 
-    // --- DIKI TRANSLATE LOGIC ---
+    // --- DIKI TRANSLATE LOGIC (Web Scraper Direct) ---
     async function fetchDikiTranslations(word) {
         // Target specific slot
         const dikiSlot = document.getElementById('diki-slot');
         const parentDiv = document.getElementById('translate-div');
-        if (!dikiSlot) return;
+        
+        // If already populated by autoTranslate, skip or overwrite?
+        // Let's check if empty to avoid overwriting potentially faster merged response
+        if (!dikiSlot || dikiSlot.innerHTML !== '') return;
 
         const token = localStorage.getItem(TOKEN_KEY);
 
@@ -834,20 +862,53 @@
 
             const data = await response.json();
             
-            if (data.translations && data.translations.length > 0) {
-                // Join translations with commas
-                const translationsText = data.translations.join(", ");
-                dikiSlot.innerHTML = `<span class="diki-label">WEB</span> ${translationsText}`;
+            let webHtml = '';
+            
+            // Support NEW structured format (meanings array of objects)
+            if (data.meanings && data.meanings.length > 0) {
+                 webHtml = formatDikiMeanings(data.meanings);
+            } 
+            // Support OLD flat format (translations array of strings) - fallback
+            else if (data.translations && data.translations.length > 0) {
+                webHtml = data.translations.join(", ");
+            }
+
+            if (webHtml) {
+                dikiSlot.innerHTML = `<span class="diki-label">WEB</span> ${webHtml}`;
                 
                 // Ensure parent container is visible and styled
-                parentDiv.classList.add('pl-translation'); 
-                parentDiv.style.display = 'block';
+                if (parentDiv) {
+                    parentDiv.classList.add('pl-translation'); 
+                    parentDiv.style.display = 'block';
+                }
                 updateStats();
             }
 
         } catch (error) {
             console.error("Diki translation error:", error);
         }
+    }
+    
+    // Helper to format Diki Meanings for the "WEB" slot
+    function formatDikiMeanings(meanings) {
+        if (!meanings || !Array.isArray(meanings)) return '';
+        
+        let parts = [];
+        meanings.forEach(group => {
+            const pos = group.part_of_speech;
+            const defs = group.definitions || [];
+            if (defs.length === 0) return;
+            
+            const defsStr = defs.join(", ");
+            
+            if (pos && pos !== 'unknown') {
+                parts.push(`<span class="pos-inline">${pos}</span>: ${defsStr}`);
+            } else {
+                parts.push(defsStr);
+            }
+        });
+        
+        return parts.join("; ");
     }
 
     // --- MANUAL TRANSLATE LOGIC (CONTEXT) ---
@@ -1124,3 +1185,4 @@
 
 </body>
 </html>
+
