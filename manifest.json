@@ -1,0 +1,51 @@
+{
+  "name": "Polyglot Dictionary",
+  "short_name": "Polyglot",
+  "description": "Personal Dictionary & Anki Builder",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fdf6e3",
+  "theme_color": "#268bd2",
+  "orientation": "portrait",
+  "id": "/polyglot-dictionary",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3898/3898082.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3898/3898082.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "t",
+      "text": "w",
+      "url": "u"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "New Search",
+      "short_name": "Search",
+      "description": "Clear context and start a fresh lookup",
+      "url": "./index.html?action=new_search",
+      "icons": [
+        {
+          "src": "https://cdn-icons-png.flaticon.com/512/54/54481.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
