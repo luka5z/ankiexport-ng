@@ -28,9 +28,9 @@
     "method": "GET",
     "enctype": "application/x-www-form-urlencoded",
     "params": {
-      "title": "t",
-      "text": "w",
-      "url": "u"
+      "title": "title",
+      "text": "text",
+      "url": "url"
     }
   },
   "shortcuts": [
@@ -48,4 +48,5 @@
       ]
     }
   ]
+}
 }
