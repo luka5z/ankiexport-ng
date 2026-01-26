@@ -3,6 +3,7 @@
   "short_name": "Polyglot",
   "description": "Personal Dictionary & Anki Builder",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#fdf6e3",
   "theme_color": "#268bd2",
@@ -49,4 +50,4 @@
     }
   ]
 }
-}
+
